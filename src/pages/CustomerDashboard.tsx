@@ -51,15 +51,9 @@ import {
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(45, 70%, 50%)', 'hsl(200, 70%, 50%)'];
 
 export default function CustomerDashboard() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Redirect to login if not authenticated
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
 
   // Fetch customer bookings
   const { data: bookings, isLoading: bookingsLoading } = useQuery({
@@ -154,6 +148,23 @@ export default function CustomerDashboard() {
 
   // Recent bookings
   const recentBookings = bookings?.slice(0, 5) || [];
+
+  // Redirect to login if not authenticated - must be after all hooks
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Crown className="h-12 w-12 text-secondary mx-auto mb-4 animate-pulse" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
 
   return (
     <SidebarProvider>

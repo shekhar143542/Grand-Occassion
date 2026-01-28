@@ -54,6 +54,12 @@ export function Navbar() {
               My Bookings
             </Link>
           )}
+          <Link
+            to="/admin/login"
+            className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+          >
+            Admin
+          </Link>
         </div>
 
         {/* Auth Actions */}

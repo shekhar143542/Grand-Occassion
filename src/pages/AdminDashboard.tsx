@@ -11,6 +11,7 @@ import { BookingCard } from '@/components/admin/BookingCard';
 import { BookingDetailsDialog } from '@/components/admin/BookingDetailsDialog';
 import { ActionDialog, ActionType } from '@/components/admin/ActionDialog';
 import { AdminManagement } from '@/components/admin/AdminManagement';
+import { VenueManagement } from '@/components/admin/VenueManagement';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +23,7 @@ import {
   Users,
   Calendar,
   LayoutDashboard,
+  Building2,
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -379,10 +381,16 @@ export default function AdminDashboardPage() {
               All Bookings
             </TabsTrigger>
             {userRole === 'super_admin' && (
-              <TabsTrigger value="admins" className="data-[state=active]:bg-card">
-                <Users className="h-4 w-4 mr-2" />
-                Admin Management
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="venues" className="data-[state=active]:bg-card">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Venue Management
+                </TabsTrigger>
+                <TabsTrigger value="admins" className="data-[state=active]:bg-card">
+                  <Users className="h-4 w-4 mr-2" />
+                  Admin Management
+                </TabsTrigger>
+              </>
             )}
           </TabsList>
 
@@ -428,9 +436,14 @@ export default function AdminDashboardPage() {
           ))}
 
           {userRole === 'super_admin' && (
-            <TabsContent value="admins">
-              <AdminManagement />
-            </TabsContent>
+            <>
+              <TabsContent value="venues">
+                <VenueManagement />
+              </TabsContent>
+              <TabsContent value="admins">
+                <AdminManagement />
+              </TabsContent>
+            </>
           )}
         </Tabs>
       </div>

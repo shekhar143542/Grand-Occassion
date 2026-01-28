@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,8 +14,10 @@ import {
   Check,
   RotateCcw,
   Maximize2,
+  Minimize2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -26,7 +28,9 @@ export default function HallDetailsPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isRotating, setIsRotating] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const lastX = useRef(0);
 
@@ -75,6 +79,35 @@ export default function HallDetailsPage() {
   const handleMouseUp = () => {
     isDragging.current = false;
   };
+
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!isFullscreen) {
+      setIsFullscreen(true);
+      document.body.style.overflow = 'hidden';
+    } else {
+      setIsFullscreen(false);
+      document.body.style.overflow = '';
+    }
+  }, [isFullscreen]);
+
+  // Handle ESC key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        toggleFullscreen();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen, toggleFullscreen]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   const amenities = (hall?.amenities as string[]) || [];
   const images = (hall?.images as string[]) || [];
@@ -149,6 +182,7 @@ export default function HallDetailsPage() {
               variant="secondary"
               size="sm"
               className="glass border-0"
+              onClick={toggleFullscreen}
             >
               <Maximize2 className="h-4 w-4 mr-2" />
               Fullscreen
@@ -172,6 +206,74 @@ export default function HallDetailsPage() {
             </Link>
           </Button>
         </section>
+
+        {/* Fullscreen 360° View Modal */}
+        {isFullscreen && (
+          <div 
+            ref={fullscreenRef}
+            className="fixed inset-0 z-[100] bg-black"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            <div
+              className="absolute inset-0 bg-cover bg-center transition-transform duration-100 cursor-grab active:cursor-grabbing"
+              style={{
+                backgroundImage: `url('${hall.panorama_url || images[0] || 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920'}')`,
+                backgroundPosition: `${50 + rotation * 0.5}% 50%`,
+                backgroundSize: '200% 100%',
+              }}
+            />
+            
+            {/* Fullscreen Header */}
+            <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/70 to-transparent">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-semibold">
+                    360° Virtual Tour
+                  </div>
+                  <h2 className="text-white font-serif text-2xl font-bold">{hall.name}</h2>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={toggleFullscreen}
+                  className="rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Fullscreen Controls */}
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4">
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => setIsRotating(!isRotating)}
+                className="glass border-0"
+              >
+                <RotateCcw className={`h-5 w-5 mr-2 ${isRotating ? 'animate-spin' : ''}`} />
+                {isRotating ? 'Stop Rotation' : 'Auto Rotate'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                className="glass border-0"
+                onClick={toggleFullscreen}
+              >
+                <Minimize2 className="h-5 w-5 mr-2" />
+                Exit Fullscreen
+              </Button>
+            </div>
+
+            {/* Instructions */}
+            <div className="absolute bottom-8 right-8 text-white/60 text-sm">
+              Drag to look around • Press ESC to exit
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="container mx-auto px-4 py-12">

@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { VenueImageUpload } from './VenueImageUpload';
 import {
   Dialog,
   DialogContent,
@@ -38,7 +39,6 @@ import {
   IndianRupee,
   Image,
   View,
-  X,
 } from 'lucide-react';
 
 interface VenueFormData {
@@ -47,7 +47,7 @@ interface VenueFormData {
   capacity: number;
   price_per_hour: number;
   amenities: string;
-  images: string;
+  images: string[];
   panorama_url: string;
   is_active: boolean;
 }
@@ -58,7 +58,7 @@ const initialFormData: VenueFormData = {
   capacity: 100,
   price_per_hour: 1000,
   amenities: '',
-  images: '',
+  images: [],
   panorama_url: '',
   is_active: true,
 };
@@ -97,10 +97,7 @@ export function VenueManagement() {
           .split(',')
           .map((a) => a.trim())
           .filter(Boolean),
-        images: data.images
-          .split(',')
-          .map((i) => i.trim())
-          .filter(Boolean),
+        images: data.images.filter(Boolean),
         panorama_url: data.panorama_url.trim() || null,
         is_active: data.is_active,
       };
@@ -174,7 +171,7 @@ export function VenueManagement() {
       capacity: venue.capacity,
       price_per_hour: venue.price_per_hour,
       amenities: venue.amenities.join(', '),
-      images: venue.images.join(', '),
+      images: venue.images || [],
       panorama_url: venue.panorama_url || '',
       is_active: venue.is_active,
     });
@@ -395,36 +392,20 @@ export function VenueManagement() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="images">Image URLs (comma-separated)</Label>
-              <Textarea
-                id="images"
-                value={formData.images}
-                onChange={(e) => setFormData({ ...formData, images: e.target.value })}
-                placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                rows={2}
-              />
-              <p className="text-xs text-muted-foreground">
-                Add multiple image URLs separated by commas. First image will be used as the main
-                image.
-              </p>
-            </div>
+            {/* Gallery Images Upload */}
+            <VenueImageUpload
+              type="gallery"
+              existingImages={formData.images}
+              onImagesChange={(images) => setFormData({ ...formData, images })}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="panorama" className="flex items-center gap-2">
-                <View className="h-4 w-4 text-purple-500" />
-                360° Panorama URL
-              </Label>
-              <Input
-                id="panorama"
-                value={formData.panorama_url}
-                onChange={(e) => setFormData({ ...formData, panorama_url: e.target.value })}
-                placeholder="https://example.com/360-view.jpg"
-              />
-              <p className="text-xs text-muted-foreground">
-                Upload a 360° camera image URL for an immersive venue preview.
-              </p>
-            </div>
+            {/* 360° Panorama Upload */}
+            <VenueImageUpload
+              type="panorama"
+              existingPanorama={formData.panorama_url}
+              onImagesChange={() => {}}
+              onPanoramaChange={(url) => setFormData({ ...formData, panorama_url: url })}
+            />
 
             <div className="flex items-center justify-between">
               <div>
@@ -439,31 +420,6 @@ export function VenueManagement() {
               />
             </div>
 
-            {/* Image Preview */}
-            {formData.images && (
-              <div className="space-y-2">
-                <Label>Image Preview</Label>
-                <div className="flex gap-2 flex-wrap">
-                  {formData.images
-                    .split(',')
-                    .map((url) => url.trim())
-                    .filter(Boolean)
-                    .slice(0, 4)
-                    .map((url, i) => (
-                      <div key={i} className="relative h-20 w-20 rounded-lg overflow-hidden bg-muted">
-                        <img
-                          src={url}
-                          alt={`Preview ${i + 1}`}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
           </div>
 
           <DialogFooter>

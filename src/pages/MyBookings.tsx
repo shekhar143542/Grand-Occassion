@@ -1,11 +1,24 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Booking, BanquetHall, statusLabels, statusColors } from '@/lib/types';
+import { Booking, BanquetHall, BookingDocument, statusLabels, statusColors } from '@/lib/types';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DocumentUpload } from '@/components/booking/DocumentUpload';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { 
@@ -15,14 +28,28 @@ import {
   Plus,
   Download,
   FileText,
-  CreditCard
+  CreditCard,
+  Upload,
+  ChevronDown,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  Eye
 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+interface BookingWithDocs extends Booking {
+  documents?: BookingDocument[];
+}
+
 export default function MyBookingsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -44,32 +71,59 @@ export default function MyBookingsPage() {
 
       if (bookingsError) throw bookingsError;
 
-      // Fetch booking halls for each booking
-      const bookingsWithHalls = await Promise.all(
+      // Fetch booking halls and documents for each booking
+      const bookingsWithDetails = await Promise.all(
         (bookingsData || []).map(async (booking) => {
+          // Fetch halls
           const { data: bookingHalls } = await supabase
             .from('booking_halls')
             .select('hall_id')
             .eq('booking_id', booking.id);
 
+          let halls: BanquetHall[] = [];
           if (bookingHalls && bookingHalls.length > 0) {
             const hallIds = bookingHalls.map(bh => bh.hall_id);
-            const { data: halls } = await supabase
+            const { data: hallsData } = await supabase
               .from('banquet_halls')
               .select('*')
               .in('id', hallIds);
-
-            return { ...booking, halls: halls as BanquetHall[] };
+            halls = (hallsData as BanquetHall[]) || [];
           }
 
-          return { ...booking, halls: [] };
+          // Fetch documents
+          const { data: docs } = await supabase
+            .from('booking_documents')
+            .select('*')
+            .eq('booking_id', booking.id);
+
+          return { ...booking, halls, documents: docs || [] };
         })
       );
 
-      return bookingsWithHalls as Booking[];
+      return bookingsWithDetails as BookingWithDocs[];
     },
     enabled: !!user,
   });
+
+  const openUploadDialog = (bookingId: string) => {
+    setSelectedBookingId(bookingId);
+    setUploadDialogOpen(true);
+  };
+
+  const handleUploadComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+  };
+
+  const getDocStatusIcon = (status: string) => {
+    switch (status) {
+      case 'verified':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'rejected':
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-amber-500" />;
+    }
+  };
 
   if (!user) return null;
 
@@ -109,78 +163,204 @@ export default function MyBookingsPage() {
               ))
             ) : bookings && bookings.length > 0 ? (
               bookings.map((booking) => (
-                <div key={booking.id} className="luxury-card p-6">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    {/* Left Side - Booking Info */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-serif text-xl font-semibold">
-                          {booking.event_type || 'Event'}
-                        </h3>
-                        <Badge className={statusColors[booking.status]}>
-                          {statusLabels[booking.status]}
-                        </Badge>
+                <Collapsible
+                  key={booking.id}
+                  open={expandedBooking === booking.id}
+                  onOpenChange={(open) => setExpandedBooking(open ? booking.id : null)}
+                >
+                  <div className="luxury-card p-6">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      {/* Left Side - Booking Info */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-serif text-xl font-semibold">
+                            {booking.event_type || 'Event'}
+                          </h3>
+                          <Badge className={statusColors[booking.status]}>
+                            {statusLabels[booking.status]}
+                          </Badge>
+                          {booking.payment_status === 'paid' && (
+                            <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
+                              Paid
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-4 w-4" />
+                            {format(new Date(booking.booking_date), 'PPP')}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-4 w-4" />
+                            {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <MapPin className="h-4 w-4 text-secondary" />
+                          <span>
+                            {booking.halls?.map(h => h.name).join(', ') || 'No venue'}
+                          </span>
+                        </div>
+
+                        {/* Document status indicator */}
+                        {booking.documents && booking.documents.length > 0 && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              {booking.documents.length} document(s) uploaded
+                            </span>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="h-4 w-4" />
-                          {format(new Date(booking.booking_date), 'PPP')}
+                      {/* Right Side - Amount & Actions */}
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Total Amount</p>
+                          <p className="text-2xl font-serif font-bold">
+                            ${booking.total_amount?.toLocaleString() || '0'}
+                          </p>
+                          {booking.advance_amount && (
+                            <p className="text-xs text-muted-foreground">
+                              Advance: ${booking.advance_amount.toLocaleString()}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-4 w-4" />
-                          {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-1.5 text-sm">
-                        <MapPin className="h-4 w-4 text-secondary" />
-                        <span>
-                          {booking.halls?.map(h => h.name).join(', ') || 'No venue'}
-                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {/* Show upload button for pending status */}
+                          {(booking.status === 'pending' || booking.status === 'change_requested') && (
+                            <Button 
+                              variant="secondary" 
+                              size="sm"
+                              onClick={() => openUploadDialog(booking.id)}
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Upload Docs
+                            </Button>
+                          )}
+
+                          {booking.status === 'payment_pending' && booking.payment_link && (
+                            <Button variant="gold" size="sm" asChild>
+                              <a href={booking.payment_link} target="_blank" rel="noopener noreferrer">
+                                <CreditCard className="h-4 w-4 mr-2" />
+                                Pay Now
+                              </a>
+                            </Button>
+                          )}
+
+                          <CollapsibleTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${expandedBooking === booking.id ? 'rotate-180' : ''}`} />
+                              Details
+                            </Button>
+                          </CollapsibleTrigger>
+
+                          {booking.status === 'approved' && (
+                            <Button variant="outline" size="sm">
+                              <Download className="h-4 w-4 mr-2" />
+                              Invoice
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Right Side - Amount & Actions */}
-                    <div className="flex flex-col items-end gap-3">
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Total Amount</p>
-                        <p className="text-2xl font-serif font-bold">
-                          ${booking.total_amount?.toLocaleString() || '0'}
-                        </p>
+                    {/* Expandable Details */}
+                    <CollapsibleContent className="mt-4 pt-4 border-t space-y-4">
+                      {/* Documents Section */}
+                      <div>
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Uploaded Documents
+                        </h4>
+                        {booking.documents && booking.documents.length > 0 ? (
+                          <div className="space-y-2">
+                            {booking.documents.map((doc) => (
+                              <div
+                                key={doc.id}
+                                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <FileText className="h-5 w-5 text-muted-foreground" />
+                                  <div>
+                                    <p className="text-sm font-medium">{doc.document_name}</p>
+                                    <p className="text-xs text-muted-foreground capitalize">
+                                      {doc.document_type.replace('_', ' ')}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {getDocStatusIcon(doc.status)}
+                                  <span className="text-xs capitalize">{doc.status}</span>
+                                  <Button variant="ghost" size="sm" asChild>
+                                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                                      <Eye className="h-4 w-4" />
+                                    </a>
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 bg-muted/30 rounded-lg">
+                            <FileText className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+                            <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
+                            {(booking.status === 'pending' || booking.status === 'change_requested') && (
+                              <Button 
+                                variant="secondary" 
+                                size="sm" 
+                                className="mt-3"
+                                onClick={() => openUploadDialog(booking.id)}
+                              >
+                                <Upload className="h-4 w-4 mr-2" />
+                                Upload Documents
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="flex gap-2">
-                        {booking.status === 'payment_pending' && (
-                          <Button variant="gold" size="sm">
-                            <CreditCard className="h-4 w-4 mr-2" />
-                            Pay Now
-                          </Button>
-                        )}
-                        <Button variant="outline" size="sm">
-                          <FileText className="h-4 w-4 mr-2" />
-                          Details
-                        </Button>
-                        {booking.status === 'approved' && (
-                          <Button variant="outline" size="sm">
-                            <Download className="h-4 w-4 mr-2" />
-                            Invoice
-                          </Button>
-                        )}
+                      {/* Admin Notes */}
+                      {(booking.admin1_notes || booking.admin2_notes || booking.super_admin_notes) && (
+                        <div>
+                          <h4 className="font-semibold mb-2">Notes from Admin</h4>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-sm text-muted-foreground">
+                              {booking.super_admin_notes || booking.admin2_notes || booking.admin1_notes}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Booking Details */}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="font-semibold mb-2">Event Information</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-muted-foreground">Event Type:</span> {booking.event_type || 'Not specified'}</p>
+                            <p><span className="text-muted-foreground">Guest Count:</span> {booking.guest_count || 'Not specified'}</p>
+                            {booking.special_requests && (
+                              <p><span className="text-muted-foreground">Special Requests:</span> {booking.special_requests}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2">Booking Reference</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-muted-foreground">Booking ID:</span> {booking.id.slice(0, 8)}...</p>
+                            {booking.confirmation_number && (
+                              <p><span className="text-muted-foreground">Confirmation:</span> {booking.confirmation_number}</p>
+                            )}
+                            <p><span className="text-muted-foreground">Created:</span> {format(new Date(booking.created_at), 'PPp')}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    </CollapsibleContent>
                   </div>
-
-                  {/* Admin Notes */}
-                  {(booking.admin1_notes || booking.admin2_notes || booking.super_admin_notes) && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-sm font-medium mb-2">Notes from Admin:</p>
-                      <p className="text-sm text-muted-foreground">
-                        {booking.super_admin_notes || booking.admin2_notes || booking.admin1_notes}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                </Collapsible>
               ))
             ) : (
               <div className="luxury-card p-12 text-center">
@@ -201,6 +381,26 @@ export default function MyBookingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Document Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Verification Documents</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Upload your identity verification documents. Accepted documents include Aadhaar Card, Driving License, or Passport.
+            </p>
+            {selectedBookingId && (
+              <DocumentUpload 
+                bookingId={selectedBookingId} 
+                onUploadComplete={handleUploadComplete}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

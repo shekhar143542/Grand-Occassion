@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DocumentUpload } from '@/components/booking/DocumentUpload';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
@@ -22,7 +23,8 @@ import {
   Users, 
   ArrowLeft, 
   Check,
-  Loader2
+  Loader2,
+  FileText
 } from 'lucide-react';
 
 const timeSlots = [
@@ -407,6 +409,24 @@ export default function BookingPage() {
                       onChange={(e) => setSpecialRequests(e.target.value)}
                       rows={4}
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Verification Documents Notice */}
+              <div className="luxury-card p-6 border-secondary/30 bg-secondary/5">
+                <div className="flex items-start gap-3">
+                  <FileText className="h-6 w-6 text-secondary flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-serif text-xl font-semibold mb-2">Verification Documents Required</h3>
+                    <p className="text-muted-foreground text-sm mb-3">
+                      After submitting your booking, you'll need to upload verification documents (Aadhaar, Driving License, or Passport) for identity verification. Your booking will remain in "Documents Verification Pending" status until documents are approved.
+                    </p>
+                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                      <li>Upload documents from "My Bookings" page after submission</li>
+                      <li>Accepted formats: PDF, JPG, PNG</li>
+                      <li>All documents are securely stored and verified</li>
+                    </ul>
                   </div>
                 </div>
               </div>

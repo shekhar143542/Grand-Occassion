@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          booking_id: string
+          created_at: string
+          id: string
+          new_status: string | null
+          performed_by: string
+          performed_by_role: string
+          previous_status: string | null
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          booking_id: string
+          created_at?: string
+          id?: string
+          new_status?: string | null
+          performed_by: string
+          performed_by_role: string
+          previous_status?: string | null
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          booking_id?: string
+          created_at?: string
+          id?: string
+          new_status?: string | null
+          performed_by?: string
+          performed_by_role?: string
+          previous_status?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banquet_halls: {
         Row: {
           amenities: Json | null
@@ -56,6 +100,50 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_documents: {
+        Row: {
+          booking_id: string
+          document_name: string
+          document_type: string
+          file_url: string
+          id: string
+          status: string
+          uploaded_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          booking_id: string
+          document_name: string
+          document_type: string
+          file_url: string
+          id?: string
+          status?: string
+          uploaded_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          booking_id?: string
+          document_name?: string
+          document_type?: string
+          file_url?: string
+          id?: string
+          status?: string
+          uploaded_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_documents_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_halls: {
         Row: {
           booking_id: string
@@ -96,7 +184,9 @@ export type Database = {
         Row: {
           admin1_notes: string | null
           admin2_notes: string | null
+          advance_amount: number | null
           booking_date: string
+          confirmation_number: string | null
           created_at: string
           customer_email: string
           customer_name: string
@@ -105,9 +195,12 @@ export type Database = {
           event_type: string | null
           guest_count: number | null
           id: string
+          invoice_url: string | null
           notes: string | null
           payment_date: string | null
+          payment_link: string | null
           payment_status: string | null
+          slot_locked_until: string | null
           special_requests: string | null
           start_time: string
           status: Database["public"]["Enums"]["booking_status"]
@@ -119,7 +212,9 @@ export type Database = {
         Insert: {
           admin1_notes?: string | null
           admin2_notes?: string | null
+          advance_amount?: number | null
           booking_date: string
+          confirmation_number?: string | null
           created_at?: string
           customer_email: string
           customer_name: string
@@ -128,9 +223,12 @@ export type Database = {
           event_type?: string | null
           guest_count?: number | null
           id?: string
+          invoice_url?: string | null
           notes?: string | null
           payment_date?: string | null
+          payment_link?: string | null
           payment_status?: string | null
+          slot_locked_until?: string | null
           special_requests?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["booking_status"]
@@ -142,7 +240,9 @@ export type Database = {
         Update: {
           admin1_notes?: string | null
           admin2_notes?: string | null
+          advance_amount?: number | null
           booking_date?: string
+          confirmation_number?: string | null
           created_at?: string
           customer_email?: string
           customer_name?: string
@@ -151,9 +251,12 @@ export type Database = {
           event_type?: string | null
           guest_count?: number | null
           id?: string
+          invoice_url?: string | null
           notes?: string | null
           payment_date?: string | null
+          payment_link?: string | null
           payment_status?: string | null
+          slot_locked_until?: string | null
           special_requests?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["booking_status"]
@@ -236,7 +339,7 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      admin_role: "admin1" | "admin2" | "super_admin"
+      admin_role: "admin1" | "admin2" | "super_admin" | "admin3"
       booking_status:
         | "pending"
         | "document_review"
@@ -373,7 +476,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      admin_role: ["admin1", "admin2", "super_admin"],
+      admin_role: ["admin1", "admin2", "super_admin", "admin3"],
       booking_status: [
         "pending",
         "document_review",

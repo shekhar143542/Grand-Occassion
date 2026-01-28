@@ -1,38 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Booking, BanquetHall, AdminRole, statusLabels, statusColors, BookingStatus } from '@/lib/types';
+import { Booking, BanquetHall, BookingStatus, roleDescriptions } from '@/lib/types';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { BookingCard } from '@/components/admin/BookingCard';
+import { BookingDetailsDialog } from '@/components/admin/BookingDetailsDialog';
+import { ActionDialog, ActionType } from '@/components/admin/ActionDialog';
+import { AdminManagement } from '@/components/admin/AdminManagement';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
 import {
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  CheckCircle,
-  XCircle,
-  MessageSquare,
-  DollarSign,
   Shield,
-  UserCheck,
   FileCheck,
+  UserCheck,
+  CheckCircle,
+  Users,
+  Calendar,
+  LayoutDashboard,
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -42,12 +31,11 @@ export default function AdminDashboardPage() {
   const queryClient = useQueryClient();
 
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | 'request_changes' | 'request_payment'>('approve');
-  const [adminNotes, setAdminNotes] = useState('');
+  const [actionType, setActionType] = useState<ActionType>('approve');
 
   useEffect(() => {
-    // Only redirect after loading is complete and user is confirmed not an admin
     if (!loading && (!user || !isAdmin)) {
       navigate('/admin/login');
     }
@@ -63,29 +51,36 @@ export default function AdminDashboardPage() {
 
       if (error) throw error;
 
-      // Fetch halls for each booking
-      const bookingsWithHalls = await Promise.all(
+      // Fetch halls and documents for each booking
+      const bookingsWithDetails = await Promise.all(
         (bookingsData || []).map(async (booking) => {
+          // Fetch halls
           const { data: bookingHalls } = await supabase
             .from('booking_halls')
             .select('hall_id')
             .eq('booking_id', booking.id);
 
+          let halls: BanquetHall[] = [];
           if (bookingHalls && bookingHalls.length > 0) {
             const hallIds = bookingHalls.map(bh => bh.hall_id);
-            const { data: halls } = await supabase
+            const { data: hallsData } = await supabase
               .from('banquet_halls')
               .select('*')
               .in('id', hallIds);
-
-            return { ...booking, halls: halls as BanquetHall[] };
+            halls = (hallsData as BanquetHall[]) || [];
           }
 
-          return { ...booking, halls: [] };
+          // Fetch documents
+          const { data: docs } = await supabase
+            .from('booking_documents')
+            .select('*')
+            .eq('booking_id', booking.id);
+
+          return { ...booking, halls, documents: docs || [] };
         })
       );
 
-      return bookingsWithHalls as Booking[];
+      return bookingsWithDetails as Booking[];
     },
     enabled: !!user && isAdmin,
   });
@@ -95,19 +90,30 @@ export default function AdminDashboardPage() {
       bookingId,
       status,
       notes,
+      advanceAmount,
     }: {
       bookingId: string;
       status: BookingStatus;
       notes: string;
+      advanceAmount?: number;
     }) => {
-      const updateData: Record<string, string> = { status };
+      const updateData: Record<string, any> = { status };
 
+      // Set role-specific notes
       if (userRole === 'admin1') {
         updateData.admin1_notes = notes;
       } else if (userRole === 'admin2') {
         updateData.admin2_notes = notes;
-      } else if (userRole === 'super_admin') {
+        if (advanceAmount) {
+          updateData.advance_amount = advanceAmount;
+        }
+      } else if (userRole === 'admin3' || userRole === 'super_admin') {
         updateData.super_admin_notes = notes;
+      }
+
+      // Generate confirmation number for approved bookings
+      if (status === 'approved') {
+        updateData.confirmation_number = `BK${Date.now().toString(36).toUpperCase()}`;
       }
 
       const { error } = await supabase
@@ -116,6 +122,18 @@ export default function AdminDashboardPage() {
         .eq('id', bookingId);
 
       if (error) throw error;
+
+      // Create audit log
+      const previousStatus = selectedBooking?.status;
+      await supabase.from('audit_logs').insert({
+        booking_id: bookingId,
+        action: getActionLabel(status, previousStatus),
+        previous_status: previousStatus,
+        new_status: status,
+        performed_by: user?.id,
+        performed_by_role: userRole,
+        reason: notes || null,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
@@ -124,7 +142,6 @@ export default function AdminDashboardPage() {
         description: 'The booking status has been updated successfully.',
       });
       setActionDialogOpen(false);
-      setAdminNotes('');
       setSelectedBooking(null);
     },
     onError: (error: any) => {
@@ -136,25 +153,44 @@ export default function AdminDashboardPage() {
     },
   });
 
-  const handleAction = (booking: Booking, action: typeof actionType) => {
+  const getActionLabel = (newStatus: BookingStatus, prevStatus?: BookingStatus) => {
+    switch (newStatus) {
+      case 'document_review':
+        return 'Documents Approved - Forwarded to Admin2';
+      case 'change_requested':
+        return 'Changes Requested';
+      case 'rejected':
+        return 'Booking Rejected';
+      case 'payment_pending':
+        return 'Payment Requested';
+      case 'final_approval':
+        return 'Forwarded to Admin3 for Final Approval';
+      case 'approved':
+        return 'Booking Approved';
+      default:
+        return 'Status Updated';
+    }
+  };
+
+  const handleAction = (booking: Booking, action: ActionType) => {
     setSelectedBooking(booking);
     setActionType(action);
     setActionDialogOpen(true);
   };
 
-  const confirmAction = () => {
+  const confirmAction = (notes: string, advanceAmount?: number) => {
     if (!selectedBooking) return;
 
     let newStatus: BookingStatus;
-    
+
     switch (actionType) {
       case 'approve':
         if (userRole === 'admin1') {
-          newStatus = 'availability_check';
-        } else if (userRole === 'admin2') {
-          newStatus = 'final_approval';
-        } else {
+          newStatus = 'document_review';
+        } else if (userRole === 'admin3' || userRole === 'super_admin') {
           newStatus = 'approved';
+        } else {
+          newStatus = selectedBooking.status;
         }
         break;
       case 'reject':
@@ -166,6 +202,9 @@ export default function AdminDashboardPage() {
       case 'request_payment':
         newStatus = 'payment_pending';
         break;
+      case 'forward_admin3':
+        newStatus = 'final_approval';
+        break;
       default:
         newStatus = selectedBooking.status;
     }
@@ -173,48 +212,69 @@ export default function AdminDashboardPage() {
     updateBooking.mutate({
       bookingId: selectedBooking.id,
       status: newStatus,
-      notes: adminNotes,
+      notes,
+      advanceAmount,
     });
   };
 
-  const getRelevantBookings = (status: string) => {
+  const getRelevantBookings = (tab: string) => {
     if (!bookings) return [];
-    
-    switch (status) {
+
+    switch (tab) {
       case 'pending':
+        // Admin1 sees pending docs verification
         if (userRole === 'admin1') {
-          return bookings.filter(b => b.status === 'pending' || b.status === 'document_review');
+          return bookings.filter(b => b.status === 'pending');
         }
-        return [];
-      case 'review':
+        // Admin2 sees pending availability/payment
         if (userRole === 'admin2') {
-          return bookings.filter(b => b.status === 'availability_check' || b.status === 'payment_pending');
+          return bookings.filter(b => 
+            b.status === 'document_review' || b.status === 'payment_pending'
+          );
         }
-        if (userRole === 'super_admin') {
+        // Admin3 sees pending final approval
+        if (userRole === 'admin3') {
           return bookings.filter(b => b.status === 'final_approval');
         }
+        // SuperAdmin sees all pending at any stage
+        if (userRole === 'super_admin') {
+          return bookings.filter(b => 
+            b.status !== 'approved' && b.status !== 'rejected'
+          );
+        }
         return [];
-      case 'completed':
-        return bookings.filter(b => b.status === 'approved' || b.status === 'rejected');
-      default:
+
+      case 'approved':
+        return bookings.filter(b => b.status === 'approved');
+
+      case 'rejected':
+        return bookings.filter(b => 
+          b.status === 'rejected' || b.status === 'change_requested'
+        );
+
+      case 'all':
         return bookings;
-    }
-  };
 
-  const getRoleDescription = () => {
-    switch (userRole) {
-      case 'admin1':
-        return 'Document Verification - Review booking documents and initial requests';
-      case 'admin2':
-        return 'Availability Check - Verify venue availability and manage payments';
-      case 'super_admin':
-        return 'Final Approval - Complete booking approvals and manage admins';
       default:
-        return '';
+        return [];
     }
   };
 
-  // Show loading while checking auth status
+  const getStats = () => {
+    if (!bookings) return { pending: 0, approved: 0, rejected: 0, total: 0 };
+
+    return {
+      pending: bookings.filter(b => 
+        b.status !== 'approved' && b.status !== 'rejected'
+      ).length,
+      approved: bookings.filter(b => b.status === 'approved').length,
+      rejected: bookings.filter(b => b.status === 'rejected').length,
+      total: bookings.length,
+    };
+  };
+
+  const stats = getStats();
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -241,33 +301,92 @@ export default function AdminDashboardPage() {
               Admin Dashboard
             </h1>
           </div>
-          <p className="text-muted-foreground flex items-center gap-2">
-            <Badge variant="secondary">{userRole?.replace('_', ' ').toUpperCase()}</Badge>
-            {getRoleDescription()}
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="secondary" className="text-sm px-3 py-1">
+              {userRole?.replace('_', ' ').toUpperCase()}
+            </Badge>
+            <p className="text-muted-foreground">
+              {userRole && roleDescriptions[userRole]}
+            </p>
+          </div>
         </div>
 
-        {/* Tabs */}
+        {/* Stats Cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="luxury-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-500/10 rounded-lg">
+                <FileCheck className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold">{stats.pending}</p>
+              </div>
+            </div>
+          </div>
+          <div className="luxury-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-500/10 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Approved</p>
+                <p className="text-2xl font-bold">{stats.approved}</p>
+              </div>
+            </div>
+          </div>
+          <div className="luxury-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-500/10 rounded-lg">
+                <UserCheck className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Rejected</p>
+                <p className="text-2xl font-bold">{stats.rejected}</p>
+              </div>
+            </div>
+          </div>
+          <div className="luxury-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Calendar className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Tabs */}
         <Tabs defaultValue="pending" className="space-y-6">
-          <TabsList className="bg-muted/50">
+          <TabsList className="bg-muted/50 flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="pending" className="data-[state=active]:bg-card">
               <FileCheck className="h-4 w-4 mr-2" />
-              Pending Review
+              Pending ({getRelevantBookings('pending').length})
             </TabsTrigger>
-            <TabsTrigger value="review" className="data-[state=active]:bg-card">
-              <UserCheck className="h-4 w-4 mr-2" />
-              In Progress
-            </TabsTrigger>
-            <TabsTrigger value="completed" className="data-[state=active]:bg-card">
+            <TabsTrigger value="approved" className="data-[state=active]:bg-card">
               <CheckCircle className="h-4 w-4 mr-2" />
-              Completed
+              Approved
+            </TabsTrigger>
+            <TabsTrigger value="rejected" className="data-[state=active]:bg-card">
+              <UserCheck className="h-4 w-4 mr-2" />
+              Rejected/Changes
             </TabsTrigger>
             <TabsTrigger value="all" className="data-[state=active]:bg-card">
+              <LayoutDashboard className="h-4 w-4 mr-2" />
               All Bookings
             </TabsTrigger>
+            {userRole === 'super_admin' && (
+              <TabsTrigger value="admins" className="data-[state=active]:bg-card">
+                <Users className="h-4 w-4 mr-2" />
+                Admin Management
+              </TabsTrigger>
+            )}
           </TabsList>
 
-          {['pending', 'review', 'completed', 'all'].map((tab) => (
+          {['pending', 'approved', 'rejected', 'all'].map((tab) => (
             <TabsContent key={tab} value={tab} className="space-y-4">
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
@@ -277,160 +396,7 @@ export default function AdminDashboardPage() {
                     <Skeleton className="h-4 w-1/2" />
                   </div>
                 ))
-              ) : (
-                getRelevantBookings(tab).map((booking) => (
-                  <div key={booking.id} className="luxury-card p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                      {/* Booking Info */}
-                      <div className="space-y-3 flex-1">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <h3 className="font-serif text-xl font-semibold">
-                            {booking.customer_name}
-                          </h3>
-                          <Badge className={statusColors[booking.status]}>
-                            {statusLabels[booking.status]}
-                          </Badge>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="h-4 w-4" />
-                            {format(new Date(booking.booking_date), 'PPP')}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="h-4 w-4" />
-                            {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="h-4 w-4" />
-                            {booking.halls?.map(h => h.name).join(', ') || 'No venue'}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Users className="h-4 w-4" />
-                            {booking.guest_count || 'N/A'} guests
-                          </div>
-                        </div>
-
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Event: </span>
-                          <span>{booking.event_type || 'Not specified'}</span>
-                          <span className="mx-2">•</span>
-                          <span className="text-muted-foreground">Email: </span>
-                          <span>{booking.customer_email}</span>
-                        </div>
-
-                        {booking.special_requests && (
-                          <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                            <span className="font-medium">Special Requests: </span>
-                            {booking.special_requests}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Right Side - Amount & Actions */}
-                      <div className="flex flex-col items-end gap-4">
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Total Amount</p>
-                          <p className="text-2xl font-serif font-bold flex items-center gap-1">
-                            <DollarSign className="h-5 w-5" />
-                            {booking.total_amount?.toLocaleString() || '0'}
-                          </p>
-                        </div>
-
-                        {/* Admin Actions */}
-                        <div className="flex flex-wrap gap-2">
-                          {/* Admin1 Actions */}
-                          {userRole === 'admin1' && (booking.status === 'pending' || booking.status === 'document_review') && (
-                            <>
-                              <Button
-                                variant="gold"
-                                size="sm"
-                                onClick={() => handleAction(booking, 'approve')}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Forward to Admin2
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleAction(booking, 'request_changes')}
-                              >
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                Request Changes
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleAction(booking, 'reject')}
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-
-                          {/* Admin2 Actions */}
-                          {userRole === 'admin2' && booking.status === 'availability_check' && (
-                            <>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleAction(booking, 'request_payment')}
-                              >
-                                <DollarSign className="h-4 w-4 mr-2" />
-                                Request Payment
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleAction(booking, 'reject')}
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-
-                          {userRole === 'admin2' && booking.status === 'payment_pending' && (
-                            <Button
-                              variant="gold"
-                              size="sm"
-                              onClick={() => handleAction(booking, 'approve')}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Forward to SuperAdmin
-                            </Button>
-                          )}
-
-                          {/* SuperAdmin Actions */}
-                          {userRole === 'super_admin' && booking.status === 'final_approval' && (
-                            <>
-                              <Button
-                                variant="gold"
-                                size="sm"
-                                onClick={() => handleAction(booking, 'approve')}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Approve Booking
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleAction(booking, 'reject')}
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-
-              {!isLoading && getRelevantBookings(tab).length === 0 && (
+              ) : getRelevantBookings(tab).length === 0 ? (
                 <div className="luxury-card p-12 text-center">
                   <FileCheck className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
                   <h3 className="font-serif text-xl font-semibold mb-2">
@@ -440,58 +406,51 @@ export default function AdminDashboardPage() {
                     Bookings requiring your attention will appear here.
                   </p>
                 </div>
+              ) : (
+                getRelevantBookings(tab).map((booking) => (
+                  <BookingCard
+                    key={booking.id}
+                    booking={booking}
+                    userRole={userRole}
+                    onViewDetails={(b) => {
+                      setSelectedBooking(b);
+                      setDetailsOpen(true);
+                    }}
+                    onApprove={(b) => handleAction(b, 'approve')}
+                    onReject={(b) => handleAction(b, 'reject')}
+                    onRequestChanges={(b) => handleAction(b, 'request_changes')}
+                    onRequestPayment={(b) => handleAction(b, 'request_payment')}
+                    onForwardToAdmin3={(b) => handleAction(b, 'forward_admin3')}
+                  />
+                ))
               )}
             </TabsContent>
           ))}
+
+          {userRole === 'super_admin' && (
+            <TabsContent value="admins">
+              <AdminManagement />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
-      {/* Action Dialog */}
-      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {actionType === 'approve' && 'Approve & Forward Booking'}
-              {actionType === 'reject' && 'Reject Booking'}
-              {actionType === 'request_changes' && 'Request Changes'}
-              {actionType === 'request_payment' && 'Request Payment'}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedBooking && (
-                <>
-                  Booking for {selectedBooking.customer_name} on{' '}
-                  {format(new Date(selectedBooking.booking_date), 'PPP')}
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
+      {/* Dialogs */}
+      <BookingDetailsDialog
+        booking={selectedBooking}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
 
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Add Notes (Optional)</label>
-              <Textarea
-                placeholder="Add any notes for this action..."
-                value={adminNotes}
-                onChange={(e) => setAdminNotes(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant={actionType === 'reject' ? 'destructive' : 'gold'}
-              onClick={confirmAction}
-              disabled={updateBooking.isPending}
-            >
-              {updateBooking.isPending ? 'Processing...' : 'Confirm'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ActionDialog
+        booking={selectedBooking}
+        open={actionDialogOpen}
+        onOpenChange={setActionDialogOpen}
+        actionType={actionType}
+        userRole={userRole}
+        onConfirm={confirmAction}
+        isLoading={updateBooking.isPending}
+      />
     </div>
   );
 }

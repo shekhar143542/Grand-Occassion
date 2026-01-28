@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading,
         userRole,
-        isAdmin: userRole !== null,
+        isAdmin: userRole !== null && ['admin1', 'admin2', 'admin3', 'super_admin'].includes(userRole),
         signUp,
         signIn,
         signOut,

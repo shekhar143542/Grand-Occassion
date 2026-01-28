@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Booking, BanquetHall, BookingDocument, statusLabels, statusColors } from '@/lib/types';
 import { Navbar } from '@/components/layout/Navbar';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DocumentUpload } from '@/components/booking/DocumentUpload';
+import { BookingStatusProgress } from '@/components/booking/BookingStatusProgress';
 import {
   Dialog,
   DialogContent,
@@ -36,8 +37,7 @@ import {
   XCircle,
   Eye
 } from 'lucide-react';
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 interface BookingWithDocs extends Booking {
   documents?: BookingDocument[];
@@ -47,9 +47,22 @@ export default function MyBookingsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
+
+  const handlePayment = (booking: BookingWithDocs) => {
+    if (booking.payment_link) {
+      window.open(booking.payment_link, '_blank');
+    } else {
+      toast({
+        title: 'Payment link not available',
+        description: 'The admin will provide a payment link shortly.',
+        variant: 'default',
+      });
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -169,6 +182,16 @@ export default function MyBookingsPage() {
                   onOpenChange={(open) => setExpandedBooking(open ? booking.id : null)}
                 >
                   <div className="luxury-card p-6">
+                    {/* Status Progress - Shows tick marks for completed stages */}
+                    <div className="mb-6">
+                      <BookingStatusProgress
+                        status={booking.status}
+                        paymentStatus={booking.payment_status}
+                        advanceAmount={booking.advance_amount}
+                        onPayClick={() => handlePayment(booking)}
+                      />
+                    </div>
+
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       {/* Left Side - Booking Info */}
                       <div className="space-y-2">
@@ -220,11 +243,11 @@ export default function MyBookingsPage() {
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">Total Amount</p>
                           <p className="text-2xl font-serif font-bold">
-                            ${booking.total_amount?.toLocaleString() || '0'}
+                            ₹{booking.total_amount?.toLocaleString() || '0'}
                           </p>
                           {booking.advance_amount && (
                             <p className="text-xs text-muted-foreground">
-                              Advance: ${booking.advance_amount.toLocaleString()}
+                              Advance: ₹{booking.advance_amount.toLocaleString()}
                             </p>
                           )}
                         </div>
@@ -242,12 +265,14 @@ export default function MyBookingsPage() {
                             </Button>
                           )}
 
-                          {booking.status === 'payment_pending' && booking.payment_link && (
-                            <Button variant="gold" size="sm" asChild>
-                              <a href={booking.payment_link} target="_blank" rel="noopener noreferrer">
-                                <CreditCard className="h-4 w-4 mr-2" />
-                                Pay Now
-                              </a>
+                          {booking.status === 'payment_pending' && (
+                            <Button 
+                              variant="gold" 
+                              size="sm"
+                              onClick={() => handlePayment(booking)}
+                            >
+                              <CreditCard className="h-4 w-4 mr-2" />
+                              Pay ₹{booking.advance_amount?.toLocaleString() || 'Now'}
                             </Button>
                           )}
 

@@ -5,10 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Booking, BanquetHall, statusLabels, statusColors } from '@/lib/types';
 import { CustomerSidebar } from '@/components/customer/CustomerSidebar';
+import { BookingCalendar } from '@/components/customer/BookingCalendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -31,21 +33,17 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle,
-  XCircle,
   CreditCard,
   Plus,
+  LayoutGrid,
+  CalendarDays,
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
+  Tooltip,
+  ResponsiveContainer,
 } from 'recharts';
 
 const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(45, 70%, 50%)', 'hsl(200, 70%, 50%)'];
@@ -54,6 +52,7 @@ export default function CustomerDashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(undefined);
 
   // Fetch customer bookings
   const { data: bookings, isLoading: bookingsLoading } = useQuery({
@@ -395,18 +394,31 @@ export default function CustomerDashboard() {
               </Card>
             </div>
 
-            {/* Recent Bookings */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Recent Bookings</CardTitle>
-                  <CardDescription>Your latest booking requests</CardDescription>
-                </div>
+            {/* Booking View Tabs */}
+            <Tabs defaultValue="recent" className="w-full">
+              <div className="flex items-center justify-between mb-4">
+                <TabsList>
+                  <TabsTrigger value="recent" className="flex items-center gap-2">
+                    <LayoutGrid className="h-4 w-4" />
+                    Recent
+                  </TabsTrigger>
+                  <TabsTrigger value="calendar" className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4" />
+                    Calendar
+                  </TabsTrigger>
+                </TabsList>
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/bookings">View All</Link>
                 </Button>
-              </CardHeader>
-              <CardContent>
+              </div>
+
+              <TabsContent value="recent">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Bookings</CardTitle>
+                    <CardDescription>Your latest booking requests</CardDescription>
+                  </CardHeader>
+                  <CardContent>
                 {bookingsLoading ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map((i) => (
@@ -462,8 +474,18 @@ export default function CustomerDashboard() {
                     </Button>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="calendar">
+                <BookingCalendar
+                  bookings={bookings || []}
+                  selectedDate={selectedCalendarDate}
+                  onSelectDate={setSelectedCalendarDate}
+                />
+              </TabsContent>
+            </Tabs>
           </main>
         </SidebarInset>
       </div>

@@ -297,7 +297,7 @@ export default function CustomerDashboard() {
 
             {/* Charts Section */}
             <div className="grid gap-6 lg:grid-cols-2">
-              {/* Hall Booking Frequency */}
+              {/* Hall Booking Frequency - Enhanced Bar Style */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -308,37 +308,29 @@ export default function CustomerDashboard() {
                 </CardHeader>
                 <CardContent>
                   {hallChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <LineChart data={hallChartData}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis
-                          dataKey="name"
-                          tick={{ fontSize: 12 }}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis
-                          tick={{ fontSize: 12 }}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                          }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="bookings"
-                          stroke="hsl(var(--secondary))"
-                          strokeWidth={3}
-                          dot={{ fill: 'hsl(var(--secondary))', strokeWidth: 2, r: 5 }}
-                          activeDot={{ r: 7 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    <div className="space-y-4">
+                      {hallChartData.map((item, index) => {
+                        const maxBookings = Math.max(...hallChartData.map(d => d.bookings));
+                        const percentage = (item.bookings / maxBookings) * 100;
+                        return (
+                          <div key={item.name} className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium truncate max-w-[200px]">{item.name}</span>
+                              <span className="text-muted-foreground">{item.bookings} booking{item.bookings > 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="h-3 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${percentage}%`,
+                                  backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   ) : (
                     <div className="h-[250px] flex items-center justify-center text-muted-foreground">
                       No booking data yet

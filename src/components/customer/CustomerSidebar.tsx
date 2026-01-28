@@ -36,15 +36,14 @@ import { supabase } from '@/integrations/supabase/client';
 
 const mainNavItems = [
   { title: 'Dashboard', url: '/dashboard', icon: Home },
-  { title: 'Book Halls', url: '/halls', icon: Building2 },
   { title: 'My Bookings', url: '/bookings', icon: Calendar },
 ];
 
 const requestItems = [
-  { title: 'Pending', status: 'pending', icon: Clock, color: 'text-amber-500' },
-  { title: 'Payment Required', status: 'payment_pending', icon: CreditCard, color: 'text-purple-500' },
-  { title: 'Approved', status: 'approved', icon: CheckCircle, color: 'text-green-500' },
-  { title: 'Rejected', status: 'rejected', icon: XCircle, color: 'text-red-500' },
+  { title: 'Pending', status: 'pending', url: '/dashboard/pending', icon: Clock, color: 'text-amber-500' },
+  { title: 'Payment Required', status: 'payment_pending', url: '/dashboard/payment_pending', icon: CreditCard, color: 'text-purple-500' },
+  { title: 'Approved', status: 'approved', url: '/dashboard/approved', icon: CheckCircle, color: 'text-green-500' },
+  { title: 'Rejected', status: 'rejected', url: '/dashboard/rejected', icon: XCircle, color: 'text-red-500' },
 ];
 
 export function CustomerSidebar() {
@@ -131,15 +130,18 @@ export function CustomerSidebar() {
             <SidebarMenu>
               {requestItems.map((item) => {
                 const count = bookingCounts?.[item.status] || 0;
+                const isActive = location.pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActive}
                       tooltip={`${item.title}: ${count}`}
                     >
-                      <Link
-                        to="/bookings"
+                      <NavLink
+                        to={item.url}
                         className="flex items-center justify-between w-full"
+                        activeClassName="bg-muted"
                       >
                         <div className="flex items-center gap-2">
                           <item.icon className={`h-4 w-4 shrink-0 ${item.color}`} />
@@ -150,7 +152,7 @@ export function CustomerSidebar() {
                             {count}
                           </span>
                         )}
-                      </Link>
+                      </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -165,10 +167,10 @@ export function CustomerSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Browse Venues">
+                <SidebarMenuButton asChild tooltip="New Booking">
                   <Link to="/halls" className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 shrink-0" />
-                    <span>Browse Venues</span>
+                    <Calendar className="h-4 w-4 shrink-0" />
+                    <span>New Booking</span>
                     <ChevronRight className="h-4 w-4 ml-auto" />
                   </Link>
                 </SidebarMenuButton>
@@ -209,7 +211,7 @@ export function CustomerSidebar() {
           <Button
             variant="outline"
             size="sm"
-            className="w-full mt-3"
+            className="w-full mt-3 border-border text-foreground hover:bg-destructive hover:text-destructive-foreground"
             onClick={handleSignOut}
           >
             <LogOut className="h-4 w-4 mr-2" />

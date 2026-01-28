@@ -36,8 +36,8 @@ import {
   Plus,
 } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -298,7 +298,7 @@ export default function CustomerDashboard() {
                 <CardContent>
                   {hallChartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={hallChartData}>
+                      <LineChart data={hallChartData}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis
                           dataKey="name"
@@ -318,12 +318,15 @@ export default function CustomerDashboard() {
                             borderRadius: '8px',
                           }}
                         />
-                        <Bar
+                        <Line
+                          type="monotone"
                           dataKey="bookings"
-                          fill="hsl(var(--secondary))"
-                          radius={[4, 4, 0, 0]}
+                          stroke="hsl(var(--secondary))"
+                          strokeWidth={3}
+                          dot={{ fill: 'hsl(var(--secondary))', strokeWidth: 2, r: 5 }}
+                          activeDot={{ r: 7 }}
                         />
-                      </BarChart>
+                      </LineChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-[250px] flex items-center justify-center text-muted-foreground">

@@ -1,12 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { BanquetHall } from '@/lib/types';
-import { Navbar } from '@/components/layout/Navbar';
+import { useAuth } from '@/contexts/AuthContext';
 import { HallPreviewCard } from '@/components/home/HallPreviewCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkles, Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sparkles, Building2, ArrowLeft, Crown } from 'lucide-react';
 
 export default function HallsPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   const { data: halls, isLoading } = useQuery({
     queryKey: ['all-halls'],
     queryFn: async () => {
@@ -23,7 +28,31 @@ export default function HallsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      {/* Simple Header with Back Button */}
+      <header className="fixed top-0 left-0 right-0 z-50 glass border-b">
+        <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(user ? '/dashboard' : '/')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {user ? 'Back to Dashboard' : 'Back to Home'}
+            </Button>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Crown className="h-6 w-6 text-secondary" />
+            <span className="font-serif text-lg font-semibold text-foreground">
+              Royal Banquets
+            </span>
+          </div>
+          
+          <div className="w-[140px]" /> {/* Spacer for centering */}
+        </nav>
+      </header>
 
       {/* Hero Section */}
       <section className="pt-32 pb-16 bg-gradient-to-br from-primary/5 via-background to-secondary/5">

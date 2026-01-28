@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Booking, BanquetHall, BookingDocument, statusLabels, statusColors } from '@/lib/types';
-import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,10 +15,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { 
@@ -31,26 +31,30 @@ import {
   FileText,
   CreditCard,
   Upload,
-  ChevronDown,
   CheckCircle,
   AlertCircle,
   XCircle,
-  Eye
+  Eye,
+  ArrowLeft,
+  Crown,
+  Users,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface BookingWithDocs extends Booking {
   documents?: BookingDocument[];
+  halls?: BanquetHall[];
 }
 
 export default function MyBookingsPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
-  const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<BookingWithDocs | null>(null);
 
   const handlePayment = (booking: BookingWithDocs) => {
     if (booking.payment_link) {
@@ -63,12 +67,6 @@ export default function MyBookingsPage() {
       });
     }
   };
-
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-    }
-  }, [user, navigate]);
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['my-bookings', user?.id],
@@ -123,6 +121,11 @@ export default function MyBookingsPage() {
     setUploadDialogOpen(true);
   };
 
+  const openDetailsDialog = (booking: BookingWithDocs) => {
+    setSelectedBooking(booking);
+    setDetailsDialogOpen(true);
+  };
+
   const handleUploadComplete = () => {
     queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
   };
@@ -138,274 +141,421 @@ export default function MyBookingsPage() {
     }
   };
 
-  if (!user) return null;
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Crown className="h-12 w-12 text-secondary mx-auto mb-4 animate-pulse" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
-
-      <div className="pt-24 pb-16 container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="font-serif text-4xl font-bold text-foreground mb-2">
-                My Bookings
-              </h1>
-              <p className="text-muted-foreground">
-                Manage and track your venue bookings
-              </p>
-            </div>
-            <Button variant="gold" asChild>
-              <Link to="/halls">
-                <Plus className="h-4 w-4 mr-2" />
-                New Booking
-              </Link>
+      {/* Simple Header with Back Button */}
+      <header className="fixed top-0 left-0 right-0 z-50 glass border-b">
+        <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Dashboard
             </Button>
           </div>
+          
+          <div className="flex items-center gap-2">
+            <Crown className="h-6 w-6 text-secondary" />
+            <span className="font-serif text-lg font-semibold text-foreground">
+              Royal Banquets
+            </span>
+          </div>
+          
+          <Button variant="gold" asChild size="sm">
+            <Link to="/halls">
+              <Plus className="h-4 w-4 mr-2" />
+              New Booking
+            </Link>
+          </Button>
+        </nav>
+      </header>
 
-          {/* Bookings List */}
-          <div className="space-y-4">
-            {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="luxury-card p-6">
-                  <Skeleton className="h-6 w-1/3 mb-4" />
-                  <Skeleton className="h-4 w-2/3 mb-2" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-              ))
-            ) : bookings && bookings.length > 0 ? (
-              bookings.map((booking) => (
-                <Collapsible
-                  key={booking.id}
-                  open={expandedBooking === booking.id}
-                  onOpenChange={(open) => setExpandedBooking(open ? booking.id : null)}
-                >
-                  <div className="luxury-card p-6">
-                    {/* Status Progress - Shows tick marks for completed stages */}
-                    <div className="mb-6">
-                      <BookingStatusProgress
-                        status={booking.status}
-                        paymentStatus={booking.payment_status}
-                        advanceAmount={booking.advance_amount}
-                        onPayClick={() => handlePayment(booking)}
+      <div className="pt-24 pb-16 container mx-auto px-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="font-serif text-4xl font-bold text-foreground mb-2">
+              My Bookings
+            </h1>
+            <p className="text-muted-foreground">
+              Manage and track your venue bookings
+            </p>
+          </div>
+
+          {/* Bookings Grid */}
+          {isLoading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="h-40 w-full" />
+                  <div className="p-4 space-y-3">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : bookings && bookings.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {bookings.map((booking) => (
+                <Card key={booking.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  {/* Venue Image */}
+                  <div className="relative h-40 bg-gradient-to-br from-primary/10 to-secondary/10">
+                    {booking.halls?.[0]?.images?.[0] ? (
+                      <img
+                        src={booking.halls[0].images[0]}
+                        alt={booking.halls[0].name}
+                        className="w-full h-full object-cover"
                       />
-                    </div>
-
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      {/* Left Side - Booking Info */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-serif text-xl font-semibold">
-                            {booking.event_type || 'Event'}
-                          </h3>
-                          <Badge className={statusColors[booking.status]}>
-                            {statusLabels[booking.status]}
-                          </Badge>
-                          {booking.payment_status === 'paid' && (
-                            <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
-                              Paid
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="h-4 w-4" />
-                            {format(new Date(booking.booking_date), 'PPP')}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="h-4 w-4" />
-                            {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <MapPin className="h-4 w-4 text-secondary" />
-                          <span>
-                            {booking.halls?.map(h => h.name).join(', ') || 'No venue'}
-                          </span>
-                        </div>
-
-                        {/* Document status indicator */}
-                        {booking.documents && booking.documents.length > 0 && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">
-                              {booking.documents.length} document(s) uploaded
-                            </span>
-                          </div>
-                        )}
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <MapPin className="h-12 w-12 text-muted-foreground/30" />
                       </div>
-
-                      {/* Right Side - Amount & Actions */}
-                      <div className="flex flex-col items-end gap-3">
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Total Amount</p>
-                          <p className="text-2xl font-serif font-bold">
-                            ₹{booking.total_amount?.toLocaleString() || '0'}
-                          </p>
-                          {booking.advance_amount && (
-                            <p className="text-xs text-muted-foreground">
-                              Advance: ₹{booking.advance_amount.toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          {/* Show upload button for pending status */}
-                          {(booking.status === 'pending' || booking.status === 'change_requested') && (
-                            <Button 
-                              variant="secondary" 
-                              size="sm"
-                              onClick={() => openUploadDialog(booking.id)}
-                            >
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload Docs
-                            </Button>
-                          )}
-
-                          {booking.status === 'payment_pending' && (
-                            <Button 
-                              variant="gold" 
-                              size="sm"
-                              onClick={() => handlePayment(booking)}
-                            >
-                              <CreditCard className="h-4 w-4 mr-2" />
-                              Pay ₹{booking.advance_amount?.toLocaleString() || 'Now'}
-                            </Button>
-                          )}
-
-                          <CollapsibleTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${expandedBooking === booking.id ? 'rotate-180' : ''}`} />
-                              Details
-                            </Button>
-                          </CollapsibleTrigger>
-
-                          {booking.status === 'approved' && (
-                            <Button variant="outline" size="sm">
-                              <Download className="h-4 w-4 mr-2" />
-                              Invoice
-                            </Button>
-                          )}
-                        </div>
-                      </div>
+                    )}
+                    <div className="absolute top-3 right-3">
+                      <Badge className={statusColors[booking.status]}>
+                        {statusLabels[booking.status]}
+                      </Badge>
                     </div>
+                    {booking.payment_status === 'paid' && (
+                      <div className="absolute top-3 left-3">
+                        <Badge className="bg-green-500/90 text-white">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Paid
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
 
-                    {/* Expandable Details */}
-                    <CollapsibleContent className="mt-4 pt-4 border-t space-y-4">
-                      {/* Documents Section */}
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
                       <div>
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          Uploaded Documents
-                        </h4>
-                        {booking.documents && booking.documents.length > 0 ? (
-                          <div className="space-y-2">
-                            {booking.documents.map((doc) => (
-                              <div
-                                key={doc.id}
-                                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                  <div>
-                                    <p className="text-sm font-medium">{doc.document_name}</p>
-                                    <p className="text-xs text-muted-foreground capitalize">
-                                      {doc.document_type.replace('_', ' ')}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {getDocStatusIcon(doc.status)}
-                                  <span className="text-xs capitalize">{doc.status}</span>
-                                  <Button variant="ghost" size="sm" asChild>
-                                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                                      <Eye className="h-4 w-4" />
-                                    </a>
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-6 bg-muted/30 rounded-lg">
-                            <FileText className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
-                            {(booking.status === 'pending' || booking.status === 'change_requested') && (
-                              <Button 
-                                variant="secondary" 
-                                size="sm" 
-                                className="mt-3"
-                                onClick={() => openUploadDialog(booking.id)}
-                              >
-                                <Upload className="h-4 w-4 mr-2" />
-                                Upload Documents
-                              </Button>
-                            )}
-                          </div>
-                        )}
+                        <h3 className="font-serif text-lg font-semibold line-clamp-1">
+                          {booking.event_type || 'Event'}
+                        </h3>
+                        <p className="text-sm text-muted-foreground line-clamp-1">
+                          {booking.halls?.map(h => h.name).join(', ') || 'No venue'}
+                        </p>
                       </div>
+                    </div>
+                  </CardHeader>
 
-                      {/* Admin Notes */}
-                      {(booking.admin1_notes || booking.admin2_notes || booking.super_admin_notes) && (
-                        <div>
-                          <h4 className="font-semibold mb-2">Notes from Admin</h4>
-                          <div className="p-3 bg-muted/50 rounded-lg">
-                            <p className="text-sm text-muted-foreground">
-                              {booking.super_admin_notes || booking.admin2_notes || booking.admin1_notes}
-                            </p>
-                          </div>
+                  <CardContent className="space-y-3 pb-2">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="h-4 w-4" />
+                        {format(new Date(booking.booking_date), 'PP')}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4" />
+                        {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}
+                      </div>
+                      {booking.guest_count && (
+                        <div className="flex items-center gap-1.5">
+                          <Users className="h-4 w-4" />
+                          {booking.guest_count} guests
                         </div>
                       )}
+                    </div>
 
-                      {/* Booking Details */}
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <h4 className="font-semibold mb-2">Event Information</h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-muted-foreground">Event Type:</span> {booking.event_type || 'Not specified'}</p>
-                            <p><span className="text-muted-foreground">Guest Count:</span> {booking.guest_count || 'Not specified'}</p>
-                            {booking.special_requests && (
-                              <p><span className="text-muted-foreground">Special Requests:</span> {booking.special_requests}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold mb-2">Booking Reference</h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-muted-foreground">Booking ID:</span> {booking.id.slice(0, 8)}...</p>
-                            {booking.confirmation_number && (
-                              <p><span className="text-muted-foreground">Confirmation:</span> {booking.confirmation_number}</p>
-                            )}
-                            <p><span className="text-muted-foreground">Created:</span> {format(new Date(booking.created_at), 'PPp')}</p>
-                          </div>
-                        </div>
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Amount</p>
+                        <p className="text-lg font-serif font-bold">
+                          ₹{booking.total_amount?.toLocaleString() || '0'}
+                        </p>
                       </div>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              ))
-            ) : (
-              <div className="luxury-card p-12 text-center">
-                <Calendar className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="font-serif text-2xl font-semibold text-foreground mb-2">
-                  No Bookings Yet
-                </h3>
-                <p className="text-muted-foreground mb-6">
-                  You haven't made any bookings yet. Explore our venues and book your first event!
-                </p>
-                <Button variant="gold" asChild>
-                  <Link to="/halls">
-                    Explore Venues
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </div>
+                      {booking.documents && booking.documents.length > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <FileText className="h-3.5 w-3.5" />
+                          {booking.documents.length} doc(s)
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="flex gap-2 pt-0">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => openDetailsDialog(booking)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View More
+                    </Button>
+                    
+                    {booking.status === 'payment_pending' && (
+                      <Button 
+                        variant="gold" 
+                        size="sm"
+                        onClick={() => handlePayment(booking)}
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Pay
+                      </Button>
+                    )}
+                    
+                    {(booking.status === 'pending' || booking.status === 'change_requested') && (
+                      <Button 
+                        variant="secondary" 
+                        size="sm"
+                        onClick={() => openUploadDialog(booking.id)}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-12 text-center">
+              <Calendar className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+              <h3 className="font-serif text-2xl font-semibold text-foreground mb-2">
+                No Bookings Yet
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                You haven't made any bookings yet. Explore our venues and book your first event!
+              </p>
+              <Button variant="gold" asChild>
+                <Link to="/halls">
+                  Explore Venues
+                </Link>
+              </Button>
+            </Card>
+          )}
         </div>
       </div>
+
+      {/* Booking Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">
+              {selectedBooking?.event_type || 'Booking Details'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedBooking && (
+            <div className="space-y-6 py-4">
+              {/* Status Progress */}
+              <div className="p-4 bg-muted/30 rounded-lg">
+                <BookingStatusProgress
+                  status={selectedBooking.status}
+                  paymentStatus={selectedBooking.payment_status}
+                  advanceAmount={selectedBooking.advance_amount}
+                  onPayClick={() => handlePayment(selectedBooking)}
+                />
+              </div>
+
+              {/* Venue Info */}
+              {selectedBooking.halls && selectedBooking.halls.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-secondary" />
+                    Venue
+                  </h4>
+                  <div className="flex gap-4 items-center p-3 bg-muted/50 rounded-lg">
+                    {selectedBooking.halls[0].images?.[0] && (
+                      <img
+                        src={selectedBooking.halls[0].images[0]}
+                        alt={selectedBooking.halls[0].name}
+                        className="h-20 w-20 rounded-lg object-cover"
+                      />
+                    )}
+                    <div>
+                      <p className="font-medium">{selectedBooking.halls.map(h => h.name).join(', ')}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Capacity: {selectedBooking.halls[0].capacity} guests
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Event Details */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold mb-3">Event Information</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>{format(new Date(selectedBooking.booking_date), 'PPP')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>{selectedBooking.start_time.slice(0, 5)} - {selectedBooking.end_time.slice(0, 5)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span>{selectedBooking.guest_count || 'Not specified'} guests</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3">Payment Details</h4>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="text-muted-foreground">Total Amount:</span> ₹{selectedBooking.total_amount?.toLocaleString() || '0'}</p>
+                    {selectedBooking.advance_amount && (
+                      <p><span className="text-muted-foreground">Advance:</span> ₹{selectedBooking.advance_amount.toLocaleString()}</p>
+                    )}
+                    <p><span className="text-muted-foreground">Status:</span> <Badge variant="outline" className="ml-1 capitalize">{selectedBooking.payment_status}</Badge></p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Special Requests */}
+              {selectedBooking.special_requests && (
+                <div>
+                  <h4 className="font-semibold mb-2">Special Requests</h4>
+                  <p className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                    {selectedBooking.special_requests}
+                  </p>
+                </div>
+              )}
+
+              {/* Documents Section */}
+              <div>
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Uploaded Documents
+                </h4>
+                {selectedBooking.documents && selectedBooking.documents.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedBooking.documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">{doc.document_name}</p>
+                            <p className="text-xs text-muted-foreground capitalize">
+                              {doc.document_type.replace('_', ' ')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {getDocStatusIcon(doc.status)}
+                          <span className="text-xs capitalize">{doc.status}</span>
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                              <Eye className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 bg-muted/30 rounded-lg">
+                    <FileText className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
+                    {(selectedBooking.status === 'pending' || selectedBooking.status === 'change_requested') && (
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="mt-3"
+                        onClick={() => {
+                          setDetailsDialogOpen(false);
+                          openUploadDialog(selectedBooking.id);
+                        }}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Documents
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Admin Notes */}
+              {(selectedBooking.admin1_notes || selectedBooking.admin2_notes || selectedBooking.super_admin_notes) && (
+                <div>
+                  <h4 className="font-semibold mb-2">Notes from Admin</h4>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      {selectedBooking.super_admin_notes || selectedBooking.admin2_notes || selectedBooking.admin1_notes}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Booking Reference */}
+              <div className="pt-4 border-t text-sm text-muted-foreground">
+                <p>Booking ID: {selectedBooking.id.slice(0, 8)}...</p>
+                {selectedBooking.confirmation_number && (
+                  <p>Confirmation: {selectedBooking.confirmation_number}</p>
+                )}
+                <p>Created: {format(new Date(selectedBooking.created_at), 'PPp')}</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4">
+                {selectedBooking.status === 'payment_pending' && (
+                  <Button 
+                    variant="gold" 
+                    className="flex-1"
+                    onClick={() => handlePayment(selectedBooking)}
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Pay ₹{selectedBooking.advance_amount?.toLocaleString() || 'Now'}
+                  </Button>
+                )}
+                
+                {(selectedBooking.status === 'pending' || selectedBooking.status === 'change_requested') && (
+                  <Button 
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => {
+                      setDetailsDialogOpen(false);
+                      openUploadDialog(selectedBooking.id);
+                    }}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Documents
+                  </Button>
+                )}
+                
+                {selectedBooking.status === 'approved' && (
+                  <Button variant="outline" className="flex-1">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Invoice
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Document Upload Dialog */}
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>

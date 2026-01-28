@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
-  const { user, userRole, isAdmin } = useAuth();
+  const { user, userRole, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -47,10 +47,11 @@ export default function AdminDashboardPage() {
   const [adminNotes, setAdminNotes] = useState('');
 
   useEffect(() => {
-    if (!user || !isAdmin) {
-      navigate('/');
+    // Only redirect after loading is complete and user is confirmed not an admin
+    if (!loading && (!user || !isAdmin)) {
+      navigate('/admin/login');
     }
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, loading, navigate]);
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['admin-bookings', userRole],
@@ -212,6 +213,18 @@ export default function AdminDashboardPage() {
         return '';
     }
   };
+
+  // Show loading while checking auth status
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Shield className="h-12 w-12 text-secondary animate-pulse mx-auto mb-4" />
+          <p className="text-muted-foreground">Verifying admin access...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user || !isAdmin) return null;
 

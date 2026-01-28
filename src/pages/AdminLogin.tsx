@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,16 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect if already logged in as admin
+  useEffect(() => {
+    if (!loading && user && isAdmin) {
+      navigate('/admin');
+    }
+  }, [user, isAdmin, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,17 +30,16 @@ export default function AdminLoginPage() {
     try {
       await signIn(email, password);
       toast({
-        title: 'Welcome back, Admin!',
-        description: 'Redirecting to dashboard...',
+        title: 'Welcome back!',
+        description: 'Verifying admin access...',
       });
-      navigate('/admin');
+      // Navigation will happen via useEffect once role is loaded
     } catch (error: any) {
       toast({
         title: 'Sign in failed',
         description: error.message || 'Please check your credentials.',
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };

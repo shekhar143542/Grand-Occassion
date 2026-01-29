@@ -17,18 +17,18 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { 
-  CalendarIcon, 
-  Clock, 
-  Users, 
-  ArrowLeft, 
+import {
+  CalendarIcon,
+  Clock,
+  Users,
+  ArrowLeft,
   Check,
   Loader2,
   FileText
 } from 'lucide-react';
 
 const timeSlots = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', 
+  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
   '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'
 ];
 
@@ -174,8 +174,8 @@ export default function BookingPage() {
   });
 
   const toggleHall = (hallId: string) => {
-    setSelectedHalls(prev => 
-      prev.includes(hallId) 
+    setSelectedHalls(prev =>
+      prev.includes(hallId)
         ? prev.filter(id => id !== hallId)
         : [...prev, hallId]
     );
@@ -183,13 +183,13 @@ export default function BookingPage() {
 
   const calculateTotal = () => {
     if (!startTime || !endTime || selectedHalls.length === 0 || !halls) return 0;
-    
+
     const startHour = parseInt(startTime.split(':')[0]);
     const endHour = parseInt(endTime.split(':')[0]);
     const hours = endHour - startHour;
-    
+
     if (hours <= 0) return 0;
-    
+
     const selectedHallData = halls.filter(h => selectedHalls.includes(h.id));
     return selectedHallData.reduce((sum, h) => sum + (h.price_per_hour * hours), 0);
   };
@@ -240,7 +240,7 @@ export default function BookingPage() {
                         )}
                         onClick={() => toggleHall(hall.id)}
                       >
-                        <Checkbox 
+                        <Checkbox
                           checked={selectedHalls.includes(hall.id)}
                           onCheckedChange={() => toggleHall(hall.id)}
                         />
@@ -252,7 +252,7 @@ export default function BookingPage() {
                         <div className="flex-1">
                           <p className="font-medium">{hall.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            Up to {hall.capacity} guests • ${hall.price_per_hour}/hr
+                            Up to {hall.capacity} guests • ₹{hall.price_per_hour}/hr
                           </p>
                         </div>
                         {selectedHalls.includes(hall.id) && (
@@ -322,8 +322,8 @@ export default function BookingPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {timeSlots.map((time) => (
-                          <SelectItem 
-                            key={time} 
+                          <SelectItem
+                            key={time}
                             value={time}
                             disabled={startTime && time <= startTime}
                           >
@@ -436,7 +436,7 @@ export default function BookingPage() {
             <div className="lg:col-span-1">
               <div className="luxury-card p-6 sticky top-24">
                 <h3 className="font-serif text-xl font-semibold mb-4">Booking Summary</h3>
-                
+
                 <div className="space-y-4 mb-6">
                   {selectedHalls.length > 0 ? (
                     <div>
@@ -445,7 +445,7 @@ export default function BookingPage() {
                         {halls?.filter(h => selectedHalls.includes(h.id)).map(hall => (
                           <div key={hall.id} className="flex justify-between text-sm">
                             <span>{hall.name}</span>
-                            <span>${hall.price_per_hour}/hr</span>
+                            <span>₹{hall.price_per_hour}/hr</span>
                           </div>
                         ))}
                       </div>
@@ -473,7 +473,7 @@ export default function BookingPage() {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Estimated Total</span>
                     <span className="text-2xl font-serif font-bold">
-                      ${calculateTotal().toLocaleString()}
+                      ₹{calculateTotal().toLocaleString()}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">

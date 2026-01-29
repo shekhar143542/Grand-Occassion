@@ -1,73 +1,92 @@
-# Welcome to your Lovable project
+# Grand Occasion
 
-## Project info
+A premium event booking and management platform for banquet halls and event venues.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- 🎪 Browse and book elegant banquet halls
+- 📅 Real-time availability calendar
+- 📄 Document upload and verification
+- 💳 Integrated payment processing
+- 👥 Multi-tier admin approval workflow
+- 📊 Comprehensive booking management dashboard
+- 🔐 Secure authentication with role-based access
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Backend**: Supabase (PostgreSQL + Auth)
+- **State Management**: TanStack Query (React Query)
+- **Routing**: React Router v6
+- **Date Handling**: date-fns
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 18+ and npm
+- Supabase account and project
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd elegance-events-hub
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Project Structure
 
-**Use GitHub Codespaces**
+```
+src/
+├── components/     # Reusable UI components
+│   ├── admin/     # Admin-specific components
+│   ├── booking/   # Booking flow components
+│   ├── customer/  # Customer dashboard components
+│   └── ui/        # shadcn/ui components
+├── contexts/      # React context providers
+├── hooks/         # Custom React hooks
+├── integrations/  # Supabase integration
+├── lib/           # Utilities and type definitions
+└── pages/         # Route pages
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Admin Roles
 
-## What technologies are used for this project?
+- **Admin1**: Document verification
+- **Admin2**: Availability checking and payment management
+- **Admin3**: Final booking approvals
+- **Super Admin**: Full system access and management
 
-This project is built with:
+## Available Scripts
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+- `npm run test` - Run tests
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+This project can be deployed to any static hosting service:
 
-## Can I connect a custom domain to my Lovable project?
+- Vercel
+- Netlify
+- AWS Amplify
+- Azure Static Web Apps
 
-Yes, you can!
+## License
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+All rights reserved.

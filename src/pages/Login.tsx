@@ -52,7 +52,7 @@ export default function LoginPage() {
         <div className="relative z-10 flex flex-col justify-center p-12 text-white">
           <Crown className="h-12 w-12 text-secondary mb-6" />
           <h1 className="font-serif text-4xl font-bold mb-4">
-            Welcome Back to <br />Royal Banquets
+            Welcome Back to <br />Grand Occasion
           </h1>
           <p className="text-white/80 text-lg max-w-md">
             Sign in to manage your bookings, explore new venues, and plan your perfect celebration.
@@ -67,7 +67,7 @@ export default function LoginPage() {
           <div className="lg:hidden text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2">
               <Crown className="h-10 w-10 text-secondary" />
-              <span className="font-serif text-2xl font-semibold">Royal Banquets</span>
+              <span className="font-serif text-2xl font-semibold">Grand Occasion</span>
             </Link>
           </div>
 

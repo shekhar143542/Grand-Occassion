@@ -3,21 +3,21 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BanquetHall } from '@/lib/types';
-import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Users, 
-  DollarSign, 
-  ArrowLeft, 
+import {
+  Users,
+  DollarSign,
+  ArrowLeft,
   Check,
   RotateCcw,
   Maximize2,
   Minimize2,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Crown
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -51,15 +51,22 @@ export default function HallDetailsPage() {
 
   // 360 rotation effect
   useEffect(() => {
-    let animationFrame: number;
+    let animationFrame: number | null = null;
+
+    const animate = () => {
+      setRotation((prev) => (prev + 0.3) % 360);
+      animationFrame = requestAnimationFrame(animate);
+    };
+
     if (isRotating) {
-      const animate = () => {
-        setRotation((prev) => (prev + 0.3) % 360);
-        animationFrame = requestAnimationFrame(animate);
-      };
       animationFrame = requestAnimationFrame(animate);
     }
-    return () => cancelAnimationFrame(animationFrame);
+
+    return () => {
+      if (animationFrame !== null) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
   }, [isRotating]);
 
   // Mouse drag for panorama
@@ -115,7 +122,16 @@ export default function HallDetailsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
+        <header className="fixed top-0 left-0 right-0 z-50 glass border-b">
+          <nav className="container mx-auto px-4 h-16 flex items-center justify-center">
+            <div className="flex items-center gap-2">
+              <Crown className="h-6 w-6 text-secondary" />
+              <span className="font-serif text-lg font-semibold text-foreground">
+                Grand Occasion
+              </span>
+            </div>
+          </nav>
+        </header>
         <div className="pt-20 container mx-auto px-4">
           <Skeleton className="h-[500px] w-full rounded-2xl mb-8" />
           <Skeleton className="h-12 w-1/2 mb-4" />
@@ -128,7 +144,16 @@ export default function HallDetailsPage() {
   if (!hall) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
+        <header className="fixed top-0 left-0 right-0 z-50 glass border-b">
+          <nav className="container mx-auto px-4 h-16 flex items-center justify-center">
+            <div className="flex items-center gap-2">
+              <Crown className="h-6 w-6 text-secondary" />
+              <span className="font-serif text-lg font-semibold text-foreground">
+                Grand Occasion
+              </span>
+            </div>
+          </nav>
+        </header>
         <div className="pt-32 container mx-auto px-4 text-center">
           <h1 className="font-serif text-3xl font-bold mb-4">Venue Not Found</h1>
           <Button variant="outline" asChild>
@@ -144,11 +169,31 @@ export default function HallDetailsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      {/* Simple Header - No Navigation Links or Profile */}
+      <header className="fixed top-0 left-0 right-0 z-50 glass border-b">
+        <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Crown className="h-6 w-6 text-secondary" />
+            <span className="font-serif text-lg font-semibold text-foreground">
+              Grand Occasion
+            </span>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/halls')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Venues
+          </Button>
+        </nav>
+      </header>
 
       <div className="pt-20">
         {/* 360 Panorama Section */}
-        <section 
+        <section
           id="tour"
           className="relative h-[500px] overflow-hidden cursor-grab active:cursor-grabbing"
           ref={containerRef}
@@ -168,12 +213,12 @@ export default function HallDetailsPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
 
           {/* Panorama Controls */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 z-10">
             <Button
               variant="secondary"
               size="sm"
               onClick={() => setIsRotating(!isRotating)}
-              className="glass border-0"
+              className="bg-white/90 hover:bg-white text-black border-0 shadow-lg"
             >
               <RotateCcw className={`h-4 w-4 mr-2 ${isRotating ? 'animate-spin' : ''}`} />
               {isRotating ? 'Stop' : 'Auto Rotate'}
@@ -181,7 +226,7 @@ export default function HallDetailsPage() {
             <Button
               variant="secondary"
               size="sm"
-              className="glass border-0"
+              className="bg-white/90 hover:bg-white text-black border-0 shadow-lg"
               onClick={toggleFullscreen}
             >
               <Maximize2 className="h-4 w-4 mr-2" />
@@ -193,23 +238,11 @@ export default function HallDetailsPage() {
           <div className="absolute top-6 left-6 px-4 py-2 rounded-full bg-secondary/90 text-secondary-foreground text-sm font-semibold">
             360° Virtual Tour
           </div>
-
-          {/* Back Button */}
-          <Button
-            variant="ghost"
-            className="absolute top-6 right-6 text-white hover:bg-white/20"
-            asChild
-          >
-            <Link to="/halls">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-          </Button>
         </section>
 
         {/* Fullscreen 360° View Modal */}
         {isFullscreen && (
-          <div 
+          <div
             ref={fullscreenRef}
             className="fixed inset-0 z-[100] bg-black"
             onMouseDown={handleMouseDown}
@@ -225,7 +258,7 @@ export default function HallDetailsPage() {
                 backgroundSize: '200% 100%',
               }}
             />
-            
+
             {/* Fullscreen Header */}
             <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/70 to-transparent">
               <div className="flex items-center justify-between">
@@ -247,12 +280,12 @@ export default function HallDetailsPage() {
             </div>
 
             {/* Fullscreen Controls */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4">
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 z-10">
               <Button
                 variant="secondary"
                 size="lg"
                 onClick={() => setIsRotating(!isRotating)}
-                className="glass border-0"
+                className="bg-white/90 hover:bg-white text-black border-0 shadow-lg"
               >
                 <RotateCcw className={`h-5 w-5 mr-2 ${isRotating ? 'animate-spin' : ''}`} />
                 {isRotating ? 'Stop Rotation' : 'Auto Rotate'}
@@ -260,7 +293,7 @@ export default function HallDetailsPage() {
               <Button
                 variant="secondary"
                 size="lg"
-                className="glass border-0"
+                className="bg-white/90 hover:bg-white text-black border-0 shadow-lg"
                 onClick={toggleFullscreen}
               >
                 <Minimize2 className="h-5 w-5 mr-2" />
@@ -327,9 +360,8 @@ export default function HallDetailsPage() {
                       <button
                         key={idx}
                         onClick={() => setCurrentImageIndex(idx)}
-                        className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${
-                          idx === currentImageIndex ? 'border-secondary' : 'border-transparent opacity-60'
-                        }`}
+                        className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${idx === currentImageIndex ? 'border-secondary' : 'border-transparent opacity-60'
+                          }`}
                       >
                         <img src={img} alt="" className="w-full h-full object-cover" />
                       </button>
@@ -362,7 +394,7 @@ export default function HallDetailsPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">Starting from</p>
                     <p className="text-3xl font-serif font-bold text-foreground">
-                      ${hall.price_per_hour}
+                      ₹{hall.price_per_hour}
                       <span className="text-base font-normal text-muted-foreground">/hr</span>
                     </p>
                   </div>

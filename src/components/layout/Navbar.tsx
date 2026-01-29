@@ -28,39 +28,9 @@ export function Navbar() {
         <Link to="/" className="flex items-center gap-2">
           <Crown className="h-8 w-8 text-secondary" />
           <span className="font-serif text-xl font-semibold text-foreground">
-            Royal Banquets
+            Grand Occasion
           </span>
         </Link>
-
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-6">
-          <Link
-            to="/"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Home
-          </Link>
-          <Link
-            to="/halls"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Venues
-          </Link>
-          {user && (
-            <Link
-              to="/bookings"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              My Bookings
-            </Link>
-          )}
-          <Link
-            to="/admin/login"
-            className="text-muted-foreground hover:text-foreground transition-colors text-sm"
-          >
-            Admin
-          </Link>
-        </div>
 
         {/* Auth Actions */}
         <div className="hidden md:flex items-center gap-4">
@@ -120,20 +90,6 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden glass border-t animate-fade-in">
           <div className="container mx-auto px-4 py-4 space-y-4">
-            <Link
-              to="/"
-              className="block py-2 text-foreground"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Home
-            </Link>
-            <Link
-              to="/halls"
-              className="block py-2 text-foreground"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Venues
-            </Link>
             {user ? (
               <>
                 <Link
@@ -183,3 +139,5 @@ export function Navbar() {
     </header>
   );
 }
+
+

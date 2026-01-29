@@ -9,7 +9,7 @@ interface HallPreviewCardProps {
 
 export function HallPreviewCard({ hall }: HallPreviewCardProps) {
   const amenities = hall.amenities as string[];
-  
+
   return (
     <div className="luxury-card group overflow-hidden">
       {/* Image Container */}
@@ -20,10 +20,10 @@ export function HallPreviewCard({ hall }: HallPreviewCardProps) {
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        
+
         {/* Price Badge */}
         <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full glass text-sm font-semibold text-foreground">
-          ${hall.price_per_hour}/hr
+          ₹{hall.price_per_hour}/hr
         </div>
 
         {/* 360° Badge */}

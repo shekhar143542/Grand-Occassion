@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -47,39 +47,39 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-primary">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/80" />
+      <div className="hidden lg:flex lg:w-1/2 relative bg-primary/30">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/30 to-primary/25" />
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }} />
         </div>
-        <div className="relative z-10 flex flex-col justify-center p-12 text-white">
-          <Shield className="h-16 w-16 text-secondary mb-8" />
+        <div className="relative z-10 flex flex-col justify-center p-12 text-foreground">
+          <Shield className="h-16 w-16 text-primary mb-8" />
           <h1 className="font-serif text-5xl font-bold mb-6">
             Admin Portal
           </h1>
-          <p className="text-white/80 text-lg max-w-md leading-relaxed">
-            Secure access for administrators to manage bookings, verify documents, and oversee the Royal Banquets operations.
+          <p className="text-foreground/80 text-lg max-w-md leading-relaxed">
+            Secure access for administrators to manage bookings, verify documents, and oversee the Grand Occasion operations.
           </p>
           <div className="mt-12 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                <span className="text-secondary font-bold">1</span>
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-primary font-bold">1</span>
               </div>
-              <span className="text-white/70">Admin1: Document Verification</span>
+              <span className="text-foreground/70">Admin1: Document Verification</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                <span className="text-secondary font-bold">2</span>
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-primary font-bold">2</span>
               </div>
-              <span className="text-white/70">Admin2: Availability & Payments</span>
+              <span className="text-foreground/70">Admin2: Availability & Payments</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                <span className="text-secondary font-bold">3</span>
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-primary font-bold">3</span>
               </div>
-              <span className="text-white/70">SuperAdmin: Final Approvals</span>
+              <span className="text-foreground/70">Admin3: Final Approvals</span>
             </div>
           </div>
         </div>

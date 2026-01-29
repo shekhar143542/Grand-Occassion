@@ -3,11 +3,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Booking, BanquetHall, BookingDocument, statusLabels, statusColors } from '@/lib/types';
+import { generateInvoice } from '@/lib/invoiceGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DocumentUpload } from '@/components/booking/DocumentUpload';
 import { BookingStatusProgress } from '@/components/booking/BookingStatusProgress';
+import { PaymentDialog } from '@/components/booking/PaymentDialog';
 import {
   Dialog,
   DialogContent,
@@ -22,10 +24,10 @@ import {
 } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
+import {
+  Calendar,
+  Clock,
+  MapPin,
   Plus,
   Download,
   FileText,
@@ -55,15 +57,83 @@ export default function MyBookingsPage() {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<BookingWithDocs | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentBooking, setPaymentBooking] = useState<BookingWithDocs | null>(null);
 
   const handlePayment = (booking: BookingWithDocs) => {
-    if (booking.payment_link) {
-      window.open(booking.payment_link, '_blank');
-    } else {
+    setPaymentBooking(booking);
+    setPaymentDialogOpen(true);
+  };
+
+  const handleDownloadInvoice = async (booking: BookingWithDocs) => {
+    if (!user) return;
+
+    try {
+      // Get user profile for customer details
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('user_id', user.id)
+        .single();
+
+      generateInvoice({
+        booking,
+        halls: booking.halls || [],
+        customerName: profile?.full_name || 'Customer',
+        customerEmail: profile?.email || user.email || '',
+      });
+
       toast({
-        title: 'Payment link not available',
-        description: 'The admin will provide a payment link shortly.',
-        variant: 'default',
+        title: 'Invoice Downloaded',
+        description: 'Your invoice has been downloaded successfully.',
+      });
+    } catch (error) {
+      console.error('Invoice generation error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate invoice. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!paymentBooking) return;
+
+    try {
+      // Update booking status to final_approval (payment completed)
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          payment_status: 'paid',
+          status: 'final_approval',
+          payment_date: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', paymentBooking.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Payment Successful!',
+        description: 'Your booking is being sent for final approval.',
+      });
+
+      // Refresh bookings
+      await queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+
+      // Close dialogs
+      setPaymentDialogOpen(false);
+      setDetailsDialogOpen(false);
+      
+      // Redirect to my bookings page
+      navigate('/bookings', { replace: true });
+    } catch (error) {
+      console.error('Payment update error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update payment status. Please contact support.',
+        variant: 'destructive',
       });
     }
   };
@@ -175,14 +245,14 @@ export default function MyBookingsPage() {
               Back to Dashboard
             </Button>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Crown className="h-6 w-6 text-secondary" />
             <span className="font-serif text-lg font-semibold text-foreground">
-              Royal Banquets
+              Grand Occasion
             </span>
           </div>
-          
+
           <Button variant="gold" asChild size="sm">
             <Link to="/halls">
               <Plus className="h-4 w-4 mr-2" />
@@ -235,30 +305,28 @@ export default function MyBookingsPage() {
                         <MapPin className="h-12 w-12 text-muted-foreground/30" />
                       </div>
                     )}
-                    <div className="absolute top-3 right-3">
-                      <Badge className={statusColors[booking.status]}>
-                        {statusLabels[booking.status]}
-                      </Badge>
-                    </div>
-                    {booking.payment_status === 'paid' && (
-                      <div className="absolute top-3 left-3">
-                        <Badge className="bg-green-500/90 text-white">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Paid
-                        </Badge>
-                      </div>
-                    )}
                   </div>
 
                   <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
                         <h3 className="font-serif text-lg font-semibold line-clamp-1">
                           {booking.event_type || 'Event'}
                         </h3>
                         <p className="text-sm text-muted-foreground line-clamp-1">
                           {booking.halls?.map(h => h.name).join(', ') || 'No venue'}
                         </p>
+                      </div>
+                      <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
+                        <Badge className={statusColors[booking.status]}>
+                          {statusLabels[booking.status]}
+                        </Badge>
+                        {booking.payment_status === 'paid' && (
+                          <Badge className="bg-green-500/90 text-white">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Paid
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -270,7 +338,7 @@ export default function MyBookingsPage() {
                         {format(new Date(booking.booking_date), 'PP')}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Clock className="h-4 w-4" />
@@ -301,19 +369,19 @@ export default function MyBookingsPage() {
                   </CardContent>
 
                   <CardFooter className="flex gap-2 pt-0">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="flex-1"
                       onClick={() => openDetailsDialog(booking)}
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       View More
                     </Button>
-                    
+
                     {booking.status === 'payment_pending' && (
-                      <Button 
-                        variant="gold" 
+                      <Button
+                        variant="gold"
                         size="sm"
                         onClick={() => handlePayment(booking)}
                       >
@@ -321,10 +389,10 @@ export default function MyBookingsPage() {
                         Pay
                       </Button>
                     )}
-                    
+
                     {(booking.status === 'pending' || booking.status === 'change_requested') && (
-                      <Button 
-                        variant="secondary" 
+                      <Button
+                        variant="secondary"
                         size="sm"
                         onClick={() => openUploadDialog(booking.id)}
                       >
@@ -362,7 +430,7 @@ export default function MyBookingsPage() {
               {selectedBooking?.event_type || 'Booking Details'}
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedBooking && (
             <div className="space-y-6 py-4">
               {/* Status Progress */}
@@ -480,9 +548,9 @@ export default function MyBookingsPage() {
                     <FileText className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
                     {(selectedBooking.status === 'pending' || selectedBooking.status === 'change_requested') && (
-                      <Button 
-                        variant="secondary" 
-                        size="sm" 
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         className="mt-3"
                         onClick={() => {
                           setDetailsDialogOpen(false);
@@ -521,8 +589,8 @@ export default function MyBookingsPage() {
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4">
                 {selectedBooking.status === 'payment_pending' && (
-                  <Button 
-                    variant="gold" 
+                  <Button
+                    variant="gold"
                     className="flex-1"
                     onClick={() => handlePayment(selectedBooking)}
                   >
@@ -530,9 +598,9 @@ export default function MyBookingsPage() {
                     Pay ₹{selectedBooking.advance_amount?.toLocaleString() || 'Now'}
                   </Button>
                 )}
-                
+
                 {(selectedBooking.status === 'pending' || selectedBooking.status === 'change_requested') && (
-                  <Button 
+                  <Button
                     variant="secondary"
                     className="flex-1"
                     onClick={() => {
@@ -544,9 +612,13 @@ export default function MyBookingsPage() {
                     Upload Documents
                   </Button>
                 )}
-                
+
                 {selectedBooking.status === 'approved' && (
-                  <Button variant="outline" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => handleDownloadInvoice(selectedBooking)}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Download Invoice
                   </Button>
@@ -568,14 +640,25 @@ export default function MyBookingsPage() {
               Upload your identity verification documents. Accepted documents include Aadhaar Card, Driving License, or Passport.
             </p>
             {selectedBookingId && (
-              <DocumentUpload 
-                bookingId={selectedBookingId} 
+              <DocumentUpload
+                bookingId={selectedBookingId}
                 onUploadComplete={handleUploadComplete}
               />
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Payment Dialog */}
+      {paymentBooking && (
+        <PaymentDialog
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          bookingId={paymentBooking.id}
+          amount={paymentBooking.advance_amount || paymentBooking.total_amount || 0}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }

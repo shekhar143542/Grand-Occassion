@@ -20,7 +20,7 @@ import {
   FileText,
   Download,
   Eye,
-  DollarSign,
+  IndianRupee,
   History,
   CheckCircle,
   XCircle,
@@ -136,7 +136,7 @@ export function BookingDetailsDialog({
                   <div key={hall.id} className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
                     <MapPin className="h-4 w-4 text-secondary" />
                     <span>{hall.name}</span>
-                    <span className="text-muted-foreground">(${hall.price_per_hour}/hr)</span>
+                    <span className="text-muted-foreground">(₹{hall.price_per_hour}/hr)</span>
                   </div>
                 ))}
               </div>
@@ -146,18 +146,18 @@ export function BookingDetailsDialog({
             <div className="grid md:grid-cols-2 gap-6">
               <div className="p-4 bg-muted/50 rounded-lg">
                 <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
+                  <IndianRupee className="h-5 w-5" />
                   Payment Details
                 </h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total Amount</span>
-                    <span className="font-semibold">${booking.total_amount?.toLocaleString() || '0'}</span>
+                    <span className="font-semibold">₹{booking.total_amount?.toLocaleString() || '0'}</span>
                   </div>
                   {booking.advance_amount && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Advance Amount</span>
-                      <span>${booking.advance_amount.toLocaleString()}</span>
+                      <span>₹{booking.advance_amount.toLocaleString()}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
@@ -237,8 +237,8 @@ export function BookingDetailsDialog({
                           doc.status === 'verified'
                             ? 'bg-green-500/20 text-green-500'
                             : doc.status === 'rejected'
-                            ? 'bg-red-500/20 text-red-500'
-                            : 'bg-amber-500/20 text-amber-500'
+                              ? 'bg-red-500/20 text-red-500'
+                              : 'bg-amber-500/20 text-amber-500'
                         }
                       >
                         {doc.status === 'verified' && <CheckCircle className="h-3 w-3 mr-1" />}

@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { NavLink } from '@/components/NavLink';
+import { NavLink } from '@/components/ui/NavLink';
 import {
   Sidebar,
   SidebarContent,
@@ -90,7 +90,7 @@ export function CustomerSidebar() {
         <Link to="/dashboard" className="flex items-center gap-2">
           <Crown className="h-6 w-6 text-secondary shrink-0" />
           {state !== 'collapsed' && (
-            <span className="font-serif font-semibold">Royal Banquets</span>
+            <span className="font-serif font-semibold">Grand Occasion</span>
           )}
         </Link>
       </SidebarHeader>

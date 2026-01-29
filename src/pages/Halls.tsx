@@ -46,7 +46,7 @@ export default function HallsPage() {
           <div className="flex items-center gap-2">
             <Crown className="h-6 w-6 text-secondary" />
             <span className="font-serif text-lg font-semibold text-foreground">
-              Royal Banquets
+              Grand Occasion
             </span>
           </div>
           

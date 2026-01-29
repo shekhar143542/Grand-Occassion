@@ -291,102 +291,144 @@ export default function AdminDashboardPage() {
   if (!user || !isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <Navbar />
 
       <div className="pt-24 pb-16 container mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="h-8 w-8 text-secondary" />
-            <h1 className="font-serif text-4xl font-bold text-foreground">
-              Admin Dashboard
-            </h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              {userRole?.replace('_', ' ').toUpperCase()}
-            </Badge>
-            <p className="text-muted-foreground">
-              {userRole && roleDescriptions[userRole]}
-            </p>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="luxury-card p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500/10 rounded-lg">
-                <FileCheck className="h-5 w-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold">{stats.pending}</p>
-              </div>
+        {/* Header with Premium Styling */}
+        <div className="mb-8 relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent rounded-lg blur-3xl -z-10" />
+          <div className="flex items-center gap-4 mb-3">
+            <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl border border-primary/20">
+              <Shield className="h-8 w-8 text-primary" />
             </div>
-          </div>
-          <div className="luxury-card p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Approved</p>
-                <p className="text-2xl font-bold">{stats.approved}</p>
-              </div>
-            </div>
-          </div>
-          <div className="luxury-card p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500/10 rounded-lg">
-                <UserCheck className="h-5 w-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Rejected</p>
-                <p className="text-2xl font-bold">{stats.rejected}</p>
-              </div>
-            </div>
-          </div>
-          <div className="luxury-card p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Calendar className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+            <div>
+              <h1 className="font-serif text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent">
+                Admin Dashboard
+              </h1>
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                <Badge variant="outline" className="text-sm px-4 py-1 border-primary/30 bg-primary/5 text-primary font-medium">
+                  {userRole?.replace('_', ' ').toUpperCase()}
+                </Badge>
+                <p className="text-muted-foreground text-sm">
+                  {userRole && roleDescriptions[userRole]}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content Tabs */}
+        {/* Enhanced Stats Cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-amber-500/5 rounded-xl transition-all group-hover:scale-105" />
+            <div className="relative luxury-card p-6 border-amber-500/20 hover:border-amber-500/40 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-amber-500/20 to-amber-500/10 rounded-xl">
+                  <FileCheck className="h-6 w-6 text-amber-500" />
+                </div>
+                <div className="h-12 w-12 rounded-full bg-amber-500/10 blur-xl" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground font-medium mb-1">Pending Review</p>
+                <p className="text-3xl font-bold text-foreground">{stats.pending}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-xl transition-all group-hover:scale-105" />
+            <div className="relative luxury-card p-6 border-green-500/20 hover:border-green-500/40 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-green-500/20 to-green-500/10 rounded-xl">
+                  <CheckCircle className="h-6 w-6 text-green-500" />
+                </div>
+                <div className="h-12 w-12 rounded-full bg-green-500/10 blur-xl" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground font-medium mb-1">Approved</p>
+                <p className="text-3xl font-bold text-foreground">{stats.approved}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-red-500/5 rounded-xl transition-all group-hover:scale-105" />
+            <div className="relative luxury-card p-6 border-red-500/20 hover:border-red-500/40 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-red-500/20 to-red-500/10 rounded-xl">
+                  <UserCheck className="h-6 w-6 text-red-500" />
+                </div>
+                <div className="h-12 w-12 rounded-full bg-red-500/10 blur-xl" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground font-medium mb-1">Rejected</p>
+                <p className="text-3xl font-bold text-foreground">{stats.rejected}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl transition-all group-hover:scale-105" />
+            <div className="relative luxury-card p-6 border-primary/20 hover:border-primary/40 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
+                <div className="h-12 w-12 rounded-full bg-primary/10 blur-xl" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground font-medium mb-1">Total Bookings</p>
+                <p className="text-3xl font-bold text-foreground">{stats.total}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Tabs with Premium Styling */}
         <Tabs defaultValue="pending" className="space-y-6">
-          <TabsList className="bg-muted/50 flex-wrap h-auto gap-1 p-1">
-            <TabsTrigger value="pending" className="data-[state=active]:bg-card">
+          <TabsList className="bg-card/50 backdrop-blur-sm border border-border/50 flex-wrap h-auto gap-2 p-2 rounded-xl shadow-lg">
+            <TabsTrigger 
+              value="pending" 
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-md rounded-lg transition-all"
+            >
               <FileCheck className="h-4 w-4 mr-2" />
               Pending ({getRelevantBookings('pending').length})
             </TabsTrigger>
-            <TabsTrigger value="approved" className="data-[state=active]:bg-card">
+            <TabsTrigger 
+              value="approved" 
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-md rounded-lg transition-all"
+            >
               <CheckCircle className="h-4 w-4 mr-2" />
               Approved
             </TabsTrigger>
-            <TabsTrigger value="rejected" className="data-[state=active]:bg-card">
+            <TabsTrigger 
+              value="rejected" 
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-md rounded-lg transition-all"
+            >
               <UserCheck className="h-4 w-4 mr-2" />
               Rejected/Changes
             </TabsTrigger>
-            <TabsTrigger value="all" className="data-[state=active]:bg-card">
+            <TabsTrigger 
+              value="all" 
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-md rounded-lg transition-all"
+            >
               <LayoutDashboard className="h-4 w-4 mr-2" />
               All Bookings
             </TabsTrigger>
             {userRole === 'super_admin' && (
               <>
-                <TabsTrigger value="venues" className="data-[state=active]:bg-card">
+                <TabsTrigger 
+                  value="venues" 
+                  className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-md rounded-lg transition-all"
+                >
                   <Building2 className="h-4 w-4 mr-2" />
                   Venue Management
                 </TabsTrigger>
-                <TabsTrigger value="admins" className="data-[state=active]:bg-card">
+                <TabsTrigger 
+                  value="admins" 
+                  className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-md rounded-lg transition-all"
+                >
                   <Users className="h-4 w-4 mr-2" />
                   Admin Management
                 </TabsTrigger>
@@ -405,12 +447,14 @@ export default function AdminDashboardPage() {
                   </div>
                 ))
               ) : getRelevantBookings(tab).length === 0 ? (
-                <div className="luxury-card p-12 text-center">
-                  <FileCheck className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                  <h3 className="font-serif text-xl font-semibold mb-2">
+                <div className="luxury-card p-16 text-center border-dashed border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                  <div className="inline-flex p-6 bg-gradient-to-br from-primary/20 to-primary/5 rounded-2xl mb-6">
+                    <FileCheck className="h-20 w-20 text-primary/50" />
+                  </div>
+                  <h3 className="font-serif text-2xl font-semibold mb-3 text-foreground">
                     No bookings in this category
                   </h3>
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground text-lg">
                     Bookings requiring your attention will appear here.
                   </p>
                 </div>

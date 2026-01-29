@@ -134,7 +134,7 @@ export default function CustomerDashboard() {
   const statusData = [
     { name: 'Pending', value: stats.pending, color: 'hsl(45, 70%, 50%)' },
     { name: 'Approved', value: stats.approved, color: 'hsl(142, 71%, 45%)' },
-    { name: 'Payment Pending', value: stats.paymentPending, color: 'hsl(280, 70%, 50%)' },
+    { name: 'Payment Pending', value: stats.paymentPending, color: 'hsl(33, 100%, 50%)' },
     { name: 'Rejected', value: stats.rejected, color: 'hsl(0, 84%, 60%)' },
   ].filter((item) => item.value > 0);
 
@@ -169,16 +169,16 @@ export default function CustomerDashboard() {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <CustomerSidebar />
-        
+
         <SidebarInset className="flex-1">
           {/* Header */}
           <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur px-6">
             <SidebarTrigger className="-ml-2" />
-            
+
             <div className="flex items-center gap-2">
               <Crown className="h-6 w-6 text-secondary" />
               <span className="font-serif text-lg font-semibold hidden sm:inline">
-                Royal Banquets
+                Grand Occasion
               </span>
             </div>
 
@@ -274,10 +274,10 @@ export default function CustomerDashboard() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Payment Pending</CardTitle>
-                  <CreditCard className="h-4 w-4 text-purple-500" />
+                  <CreditCard className="h-4 w-4 text-orange-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-purple-500">{stats.paymentPending}</div>
+                  <div className="text-2xl font-bold text-orange-500">{stats.paymentPending}</div>
                   <p className="text-xs text-muted-foreground">Awaiting payment</p>
                 </CardContent>
               </Card>
@@ -351,8 +351,8 @@ export default function CustomerDashboard() {
                       <div className="flex flex-wrap gap-3 mb-4">
                         {statusData.map((item) => (
                           <div key={item.name} className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
+                            <div
+                              className="w-3 h-3 rounded-full"
                               style={{ backgroundColor: item.color }}
                             />
                             <span className="text-sm">{item.name}: {item.value}</span>
@@ -374,12 +374,21 @@ export default function CustomerDashboard() {
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip 
+                          <Tooltip
                             formatter={(value: number, name: string) => [value, name]}
-                            contentStyle={{ 
-                              backgroundColor: 'hsl(var(--card))', 
+                            contentStyle={{
+                              backgroundColor: 'rgba(0, 0, 0, 0.9)',
                               border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px'
+                              borderRadius: '8px',
+                              color: '#ffffff',
+                              padding: '8px 12px'
+                            }}
+                            labelStyle={{
+                              color: '#ffffff',
+                              fontWeight: '500'
+                            }}
+                            itemStyle={{
+                              color: '#ffffff'
                             }}
                           />
                         </PieChart>
@@ -419,61 +428,61 @@ export default function CustomerDashboard() {
                     <CardDescription>Your latest booking requests</CardDescription>
                   </CardHeader>
                   <CardContent>
-                {bookingsLoading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-20 w-full" />
-                    ))}
-                  </div>
-                ) : recentBookings.length > 0 ? (
-                  <div className="space-y-3">
-                    {recentBookings.map((booking) => (
-                      <Link
-                        key={booking.id}
-                        to="/bookings"
-                        className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">
-                              {booking.event_type || 'Event'}
-                            </span>
-                            <Badge className={statusColors[booking.status]}>
-                              {statusLabels[booking.status]}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5" />
-                              {format(new Date(booking.booking_date), 'PP')}
+                    {bookingsLoading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <Skeleton key={i} className="h-20 w-full" />
+                        ))}
+                      </div>
+                    ) : recentBookings.length > 0 ? (
+                      <div className="space-y-3">
+                        {recentBookings.map((booking) => (
+                          <Link
+                            key={booking.id}
+                            to="/bookings"
+                            className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {booking.event_type || 'Event'}
+                                </span>
+                                <Badge className={statusColors[booking.status]}>
+                                  {statusLabels[booking.status]}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {format(new Date(booking.booking_date), 'PP')}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  {booking.start_time.slice(0, 5)}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  {booking.halls?.[0]?.name || 'Venue'}
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5" />
-                              {booking.start_time.slice(0, 5)}
+                            <div className="text-right">
+                              <p className="font-semibold">
+                                ₹{booking.total_amount?.toLocaleString() || '0'}
+                              </p>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3.5 w-3.5" />
-                              {booking.halls?.[0]?.name || 'Venue'}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold">
-                            ₹{booking.total_amount?.toLocaleString() || '0'}
-                          </p>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Calendar className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-                    <p className="text-muted-foreground mb-4">No bookings yet</p>
-                    <Button variant="gold" asChild>
-                      <Link to="/halls">Book Your First Venue</Link>
-                    </Button>
-                  </div>
-                )}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Calendar className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                        <p className="text-muted-foreground mb-4">No bookings yet</p>
+                        <Button variant="gold" asChild>
+                          <Link to="/halls">Book Your First Venue</Link>
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

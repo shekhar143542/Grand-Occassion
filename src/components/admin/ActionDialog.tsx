@@ -103,7 +103,7 @@ export function ActionDialog({
               />
               {booking?.total_amount && (
                 <p className="text-xs text-muted-foreground">
-                  Total booking amount: ${booking.total_amount.toLocaleString()}
+                  Total booking amount: ₹{booking.total_amount.toLocaleString()}
                 </p>
               )}
             </div>
